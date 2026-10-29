@@ -186,6 +186,25 @@ textarea.f{width:100%;min-height:110px;resize:vertical;line-height:1.55}
 code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px 5px;border-radius:4px}
 @media (max-width:980px){.g-lib,.g-next{grid-template-columns:1fr}.g3{grid-template-columns:1fr 1fr}}
 .nb .ls{display:none}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tile{all:unset;box-sizing:border-box;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:4px;transition:transform .15s,border-color .15s}
+.tile:hover{border-color:var(--line2);transform:translateY(-2px)}
+.tile .ti{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;margin-bottom:8px}
+.tile .tx{display:flex;flex-direction:column;gap:3px;min-width:0}.tile b{font-size:17px}.tile .tx span{color:var(--muted);font-size:13px}
+.ring{width:56px;height:56px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:800;background:radial-gradient(closest-side,var(--panel) 76%,transparent 78%),conic-gradient(var(--green) calc(var(--p)*360deg),#2a2a33 0)}
+.clk{cursor:pointer}.clk:hover{border-color:var(--line2)}.go{color:var(--muted);font-size:18px}
+.sbar{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:6px 6px 6px 14px;color:var(--muted)}
+.sbar:focus-within{border-color:var(--blue)}
+.sbar input{flex:1;min-width:0;background:transparent;border:0;outline:none;color:var(--txt);font:inherit;font-size:15px;padding:6px 0}
+.trow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #20202a}.trow:last-child{border:0}
+.trow .tm{flex:1;min-width:0}.trow .tm>b,.trow .tm>.hint{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .rank{width:30px;flex:none}
+.sgm{flex:1;min-width:0;cursor:pointer}.sgm b{white-space:nowrap}
+.sg .sc{width:auto;min-width:76px}
+.sg.disc{border-style:dashed;border-color:#3a2d55}
+.btn.violet{background:var(--violet);color:#160b2e}
+.btn.add{width:34px;height:34px;padding:0;border-radius:50%}
+.tipbox{display:flex;align-items:center;gap:12px;justify-content:space-between;background:rgba(47,164,255,.07);border:1px solid #23466a;border-radius:10px;padding:9px 12px;margin:0 0 14px;font-size:13px;color:#cfe6ff}
 @media (max-width:760px){
   body{overflow:auto}
   .app{grid-template-columns:1fr;height:auto;min-height:100vh;padding-bottom:calc(64px + env(safe-area-inset-bottom))}
@@ -208,6 +227,9 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
   .grid>[style*="grid-column"]{grid-column:auto!important}
   .g2,.g3,.g-lib,.g-next{grid-template-columns:1fr}.hm{display:none}
   .hero h1{font-size:24px}.hero .row{width:100%}.hero .row .btn{flex:1}
+  .tiles{grid-template-columns:1fr;gap:10px}.tile{flex-direction:row;align-items:center;gap:14px;padding:14px}.tile .ti{margin:0}
+  .sg .sc{min-width:0}.sgm b{white-space:normal}
+  .tipbox{flex-direction:column;align-items:flex-start}
   .trend{grid-template-columns:28px 36px 1fr auto}.trend .hm2{display:none}.tw{max-height:none}
   .tbl td,.tbl th{padding:7px 5px}.tt b,.tt small{max-width:150px}
   .now,.sg{flex-wrap:wrap}.sg>.cv{display:none}.sg>div:nth-child(3){flex:1 1 70%}.sg>.btn{margin-left:auto}
@@ -248,7 +270,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.0";
+const VERSION="1.1";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -269,7 +291,9 @@ const S={
   set:{name:"Mon set",ids:[],gig:null},cur:null,dir:"any",sameGenre:false,keyF:null,
   libQ:"",libG:"Tous",libB:"all",libView:"all",sort:["t",1],sel:null,libLimit:200,crates:{},
   L:{},P:{},rules:[],genreFix:{},todo:[],notifs:[],gigs:[],created:[],
-  trends:{date:0,items:[],prev:{}},trendCache:{},trSrc:"Toutes",genres:{rap:1,afro:1,rnb:1,amapiano:1,pop:1},
+  trends:{date:0,items:[]},trendCache:{},genres:{rap:1,afro:1,rnb:1,amapiano:1,pop:1},
+  disc:{date:0,items:[],extra:[]},search:{q:"",items:[]},found:{},trTab:"moment",tips:{},showOpts:false,openWhy:null,
+  styles:{amapiano:1,afrobeats:1,shatta:1,dancehall:1,kompa:1,"rap fr":1,rnb:1},
   dGig:null,dTxt:"",dPts:null,dlLast:0,onboarded:false,undo:[]
 };
 const H={serato:null,music:null,dl:null};      // dossiers autorisés
@@ -279,11 +303,15 @@ function reindex(){byN=new Map();byPath=new Map();S.tracks.forEach(t=>{byN.set(t
 const T=n=>byN.get(n);
 let saveT=null,tracksDirty=false;
 function save(tracksToo=false){if(tracksToo)tracksDirty=true;clearTimeout(saveT);saveT=setTimeout(async()=>{
-  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded"])st[k]=S[k];
+  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab"])st[k]=S[k];
   await DB.set("state",st);if(tracksDirty){await DB.set("tracks",S.tracks);tracksDirty=false;}},400);}
 async function load(){
   await DB.open();
   const st=await DB.get("state");if(st)Object.assign(S,st);
+  // reprise des données de la version 1.0
+  (S.trends.items||[]).forEach((x,i)=>{if(x.pos==null)x.pos=x.rank||i+1;});
+  S.todo.forEach(t=>{if(!t.src)t.src=/qualit/i.test(t.why)?"qualite":/soir/i.test(t.why)?"soiree":/tendance/i.test(t.why)?"auto":"moi";});
+  S.disc=S.disc||{items:[]};S.search={q:"",items:[]};
   S.tracks=(await DB.get("tracks"))||[];reindex();
   for(const k of ["serato","music","dl"]){H[k]=(await DB.get("h_"+k))||null;if(H[k])PERM[k]=await permOf(H[k],modeOf(k));}
 }
@@ -451,10 +479,10 @@ function upGigs(){return S.gigs.filter(g=>daysUntil(g.date)>=0).sort((a,b)=>a.da
 function pendingDeb(){return pastGigs().filter(g=>!g.deb&&g.type!=="Live / contenu");}
 function renderNav(){
   const v=valQueue().length,miss=S.todo.length,pd=pendingDeb().length;
-  const it=[["home","Accueil",""],["lib","Bibliothèque",v?`<span class="bdg" data-tip="${v} à vérifier">${v}</span>`:""],["next","Son suivant",""],["gigs","Soirées",""],
-    ["trend","Tendances",miss?`<span class="bdg blue" data-tip="${miss} à récupérer">${miss}</span>`:""],["debrief","Débrief vocal",pd?'<span class="dotr" data-tip="Débrief en attente"></span>':""]];
+  const it=[["home","Accueil",""],["lib","Ma musique",v?`<span class="bdg" data-tip="${v} à vérifier">${v}</span>`:""],["next","Préparer un set",""],["gigs","Soirées",""],
+    ["trend","Tendances",miss?`<span class="bdg blue" data-tip="${miss} dans ta liste">${miss}</span>`:""],["debrief","Débrief vocal",pd?'<span class="dotr" data-tip="Débrief en attente"></span>':""]];
   const dot=k=>`<i style="background:${H[k]&&PERM[k]==="granted"?"var(--green)":H[k]?"var(--orange)":"#3a3a44"}"></i>`;
-  const SH={home:"Accueil",lib:"Biblio",next:"Suivant",gigs:"Soirées",trend:"Tendances",debrief:"Débrief"};
+  const SH={home:"Accueil",lib:"Musique",next:"Préparer",gigs:"Soirées",trend:"Tendances",debrief:"Débrief"};
   $("#nav").innerHTML=`<div class="logo"><div class="disc"></div><b>Set<em>Mate</em></b></div>`+it.map(([k,l,b])=>`<button class="nb ${S.screen===k?"on":""}" onclick="go('${k}')">${svg(k)}<span class="ll">${l}</span><span class="ls">${SH[k]}</span>${b}</button>`).join("")+
    `<div class="navsp"></div><button class="nb ${S.screen==="settings"?"on":""}" onclick="go('settings')">${svg("settings")}<span class="ll">Réglages</span><span class="ls">Réglages</span></button>
    <div class="navfoot">${S.demo?"<b style='color:var(--orange)'>Mode démo</b><br>":""}${dot("serato")}Serato<br>${dot("music")}Musique<br>${dot("dl")}Téléchargements<br>${visible().length} sons</div>`;
@@ -462,6 +490,9 @@ function renderNav(){
 function go(s){S.screen=s;closeNotif();render();$("#main").scrollTop=0;}
 const VIEWS={};
 function render(){renderNav();renderTop();renderBanner();$("#main").innerHTML=`<div class="screen">${VIEWS[S.screen]()}</div>`;if(S.screen==="lib")libTable();renderPlayer();}
+function softRender(){const m=$("#main"),st=m.scrollTop,ws=window.scrollY;render();m.scrollTop=st;window.scrollTo(0,ws);}
+/** Astuce d’une ligne, affichée une seule fois par écran. */
+function tip(id,html){return S.tips[id]?"":`<div class="tipbox"><span><b>Astuce</b> · ${html}</span><button class="btn sm ghost" onclick="S.tips['${id}']=1;save();softRender()">Compris</button></div>`;}
 function renderTop(){
   const p=$("#connPill");const ok=H.serato&&PERM.serato==="granted";
   p.className="pill "+(S.demo?"warn":ok?"ok":"warn");p.innerHTML=`<i></i>${S.demo?"Mode démo":ok?"Serato connecté":H.serato?"Serato à reconnecter":"Serato non connecté"}`;
@@ -555,38 +586,33 @@ function leaveDemo(){exitDemoState();go(S.tracks.length?"home":"settings");}
 /* ===================== ACCUEIL ===================== */
 VIEWS.home=()=>{
   if(!S.tracks.length)return welcome();
-  const up=upGigs()[0],pd=pendingDeb(),vq=valQueue(),vis=visible();
-  const counts={};vis.forEach(x=>counts[x.g]=(counts[x.g]||0)+1);const gmax=Math.max(1,...Object.values(counts));
-  const withBpm=vis.filter(x=>x.bpm);const bins=[["< 90",x=>x.bpm<90],["90-99",x=>x.bpm>=90&&x.bpm<100],["100-109",x=>x.bpm>=100&&x.bpm<110],["110-119",x=>x.bpm>=110&&x.bpm<120],["120 +",x=>x.bpm>=120]].map(([l,f])=>[l,withBpm.filter(f).length]);
-  const bmax=Math.max(1,...bins.map(b=>b[1]));
-  let gigCard;
-  if(up){const c=gigCheck(up),done=c.filter(x=>x[0]).length,circ=2*Math.PI*26;const dd=daysUntil(up.date);
-    gigCard=`<div class="row between"><div><span class="tag info">Prochaine soirée · ${dd===0?"ce soir":dd===1?"demain":"dans "+dd+" jours"}</span><div class="big mt2">${esc(up.theme||up.type)}</div><div class="hint">${fmtDate(up.date)} · ${esc(up.lieu)}${up.time?" · "+esc(up.time):""}</div></div>
-      <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" stroke="#2a2a33" stroke-width="6" fill="none"/><circle cx="32" cy="32" r="26" stroke="var(--green)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-done/3)}" transform="rotate(-90 32 32)"/><text x="32" y="37" text-anchor="middle" fill="#fff" font-size="14" font-weight="800">${done}/3</text></svg></div>
-      <div class="mt">${c.map(([d,l,to])=>`<div class="ck ${d?"done":""}" onclick="${to}"><div class="bx">${d?svg("check",13,'style="color:#04210f"'):""}</div><span class="l">${l}</span><span class="go">${d?"fait":"y aller →"}</span></div>`).join("")}</div>`;}
-  else gigCard=`<h3>Aucune soirée à venir</h3><p class="hint mt2">Ajoute ta prochaine date : je prépare la checklist et je relie ton set.</p><button class="btn mt" onclick="go('gigs');newGig()">${svg("plus",15)}Nouvelle soirée</button>`;
-  const learned=Object.entries(S.L).slice(-8).map(([n,v])=>{const t=T(+n);return t?`<div class="mini">${cover(t)}<div style="flex:1;min-width:0"><b>${esc(t.t)}</b><div class="hint">${esc(v.why)}</div></div></div>`:""}).join("")+
-    Object.entries(S.P).slice(-4).map(([k,v])=>{const [a,b]=k.split(">").map(Number);return T(a)&&T(b)?`<div class="mini"><span class="tag learn">Enchaînement</span><div style="flex:1"><b>${esc(T(a).t)} → ${esc(T(b).t)}</b><div class="hint">${esc(v.why)}</div></div></div>`:""}).join("")+
-    S.rules.slice(-4).map(r=>`<div class="mini"><span class="tag learn">Règle</span><div style="flex:1" class="hint">« ${esc(r)} »</div></div>`).join("");
-  const tr=S.trends.items.slice(0,4);
-  return `<div class="hero"><div><h1>${new Date().getHours()>=18||new Date().getHours()<5?"Bonsoir":"Salut"}${S.name?", "+esc(S.name):""}</h1><p class="sub" style="margin:4px 0 0">${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})} · ${pl(vis.length,"son")} dans ta bibliothèque</p></div>
-    <div class="row"><button class="btn ghost" onclick="openPalette()">Rechercher</button><button class="btn" onclick="go('next')">${svg("next",16)}Préparer un set</button></div></div>
-  <div class="grid g3">
-    <div class="card hi" style="grid-column:span 2">${gigCard}</div>
-    <div class="card"><h3>Débrief</h3>${pd.length?`<p class="hint">${fmtDate(pd[0].date)} · ${esc(pd[0].lieu)}</p><p class="mt2" style="color:var(--txt2)">Raconte-moi ta soirée en 2 minutes. Je retiens ce qui a marché.</p><button class="btn red block mt" onclick="S.dGig=${pd[0].id};go('debrief')">${svg("debrief",16)}Faire le débrief</button>`:`<div class="empty">${svg("check",40)}<div>Aucun débrief en attente.</div></div>`}</div>
-    <div class="card"><div class="row between"><h3>Tendances</h3>${S.todo.length?`<span class="tag warn">${S.todo.length} à récupérer</span>`:""}</div>
-      ${tr.length?tr.map((x,i)=>`<div class="mini"><span class="rank" style="width:20px;font-size:14px">${i+1}</span>${cover(x)}<div style="flex:1;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.t)}</b><div class="hint">${esc(x.a)}</div></div>${ownedTrend(x)?'<span class="tag ok">Déjà</span>':'<span class="tag warn">Manque</span>'}</div>`).join(""):`<p class="hint mt2">Pas encore de récap.</p>`}
-      <button class="btn ghost block mt" onclick="go('trend')">${tr.length?"Voir le récap":"Lancer la veille"}</button></div>
-    <div class="card"><h3>À valider</h3><p class="hint">Rien ne bouge sans ton accord.</p><div class="mt2">
-      <div class="stat" onclick="S.libView='check';go('lib')"><span>Genre incertain</span><b>${vq.filter(x=>x.conf<75).length}</b></div>
-      <div class="stat" onclick="S.libView='check';go('lib')"><span>Doublons possibles</span><b>${vq.filter(x=>x.dupOf).length}</b></div>
-      <div class="stat" onclick="S.libView='check';go('lib')"><span>Qualité faible</span><b>${vq.filter(x=>x.kbps&&x.kbps<192).length}</b></div>
-      <div class="stat" onclick="S.libView='check';go('lib')"><span>Fichiers introuvables</span><b>${vq.filter(x=>x.missing).length}</b></div></div></div>
-    <div class="card"><h3>Ta bibliothèque par genre</h3><div class="bars mt2">${Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([g,n])=>`<div class="br" data-tip="${esc(g)} : ${n} sons"><span>${esc(g==="?"?"Non classé":g)}</span><div class="tr"><i style="width:${n/gmax*100}%"></i></div><b>${n}</b></div>`).join("")}</div>
-      <h3 class="mt">BPM</h3><div class="hist">${bins.map(([l,n])=>`<div class="c" data-tip="${l} BPM : ${n} sons"><i style="height:${n/bmax*80}%"></i><span>${l}</span></div>`).join("")}</div></div>
-    <div class="card" style="grid-column:span 2"><h3>Ce que j’ai appris de tes soirées</h3>${learned||`<div class="empty">${svg("debrief",40)}<div>Après ton premier débrief, je retiens ici ce qui marche et ce qui flop.</div></div>`}</div>
-  </div>`;
+  const up=upGigs()[0],pd=pendingDeb(),vq=valQueue().length,h=new Date().getHours();
+  const news=S.trends.items.filter(x=>!ownedTrend(x)).length+(S.disc.items||[]).filter(x=>!ownedTrend(x)).length;
+  const tile=(ic,col,title,sub,on)=>`<button class="tile" onclick="${on}"><span class="ti" style="background:${col}22;color:${col}">${svg(ic,22)}</span><span class="tx"><b>${title}</b><span>${sub}</span></span></button>`;
+  let gig;
+  if(up){const c=gigCheck(up),done=c.filter(x=>x[0]).length,dd=daysUntil(up.date);
+    gig=`<div class="card hi mt"><div class="row between" style="flex-wrap:nowrap"><div style="min-width:0"><span class="tag info">${dd===0?"Ce soir":dd===1?"Demain":"Dans "+dd+" jours"}</span><div class="big mt2">${esc(up.theme||up.type)}</div><div class="hint">${fmtDate(up.date)} · ${esc(up.lieu)}</div></div><div class="ring" style="--p:${done/3}">${done}/3</div></div>
+      <div class="mt">${c.map(([d,l,to])=>`<div class="ck ${d?"done":""}" onclick="${to}"><div class="bx">${d?svg("check",13,'style="color:#04210f"'):""}</div><span class="l">${l}</span><span class="go">${d?"":"→"}</span></div>`).join("")}</div></div>`;}
+  else gig=`<div class="card mt"><div class="row between"><div><h3>Pas de soirée prévue</h3><p class="hint">Ajoute ta prochaine date : je te fais ta checklist.</p></div><button class="btn sm" onclick="go('gigs');newGig()">${svg("plus",14)}Ajouter</button></div></div>`;
+  const learnedN=Object.keys(S.L).length+Object.keys(S.P).length+S.rules.length;
+  return `<div class="hero"><div><h1>${h>=18||h<5?"Bonsoir":"Salut"}${S.name?", "+esc(S.name):""}</h1><p class="sub" style="margin:4px 0 0">On fait quoi aujourd’hui ?</p></div></div>
+  <div class="tiles">
+    ${tile("next","#2fa4ff","Préparer un set","Je te souffle le son suivant","go('next')")}
+    ${tile("trend","#ff8a1f","Nouveautés",news?`${news} sons à découvrir`:"Les sons du moment","go('trend')")}
+    ${tile("debrief","#ff4d5e","Raconter ma soirée",pd.length?`Soirée du ${fmtDate(pd[0].date)} en attente`:"Débrief vocal en 2 minutes",pd.length?`S.dGig=${pd[0].id};go('debrief')`:"go('debrief')")}
+  </div>
+  ${gig}
+  ${vq?`<div class="card mt clk" onclick="S.libView='check';go('lib')"><div class="row between" style="flex-wrap:nowrap"><div><h3>${vq} son${vq>1?"s":""} à vérifier</h3><p class="hint">Genre pas sûr, doublon ou mauvaise qualité. 1 clic chacun.</p></div><span class="go">→</span></div></div>`:""}
+  ${learnedN?`<div class="card mt clk" onclick="showLearned()"><div class="row between" style="flex-wrap:nowrap"><div><h3>J’ai retenu ${learnedN} chose${learnedN>1?"s":""} de tes soirées</h3><p class="hint">Tes suggestions en tiennent compte.</p></div><span class="go">→</span></div></div>`:""}`;
 };
+function showLearned(){
+  const rows=Object.entries(S.L).map(([n,v])=>{const t=T(+n);return t?`<div class="mini">${cover(t)}<div style="flex:1;min-width:0"><b>${esc(t.t)}</b><div class="hint">${esc(v.why)}</div></div><button class="mi" onclick="forget('L','${n}')" aria-label="Oublier">${svg("x",14)}</button></div>`:""}).join("")+
+    Object.entries(S.P).map(([k,v])=>{const [a,b]=k.split(">").map(Number);return T(a)&&T(b)?`<div class="mini"><span class="tag learn">Enchaînement</span><div style="flex:1;min-width:0"><b>${esc(T(a).t)} → ${esc(T(b).t)}</b><div class="hint">${esc(v.why)}</div></div><button class="mi" onclick="forget('P','${k}')">${svg("x",14)}</button></div>`:""}).join("")+
+    S.rules.map((r,i)=>`<div class="mini"><span class="tag learn">Règle</span><div style="flex:1" class="hint">« ${esc(r)} »</div><button class="mi" onclick="forget('R',${i})">${svg("x",14)}</button></div>`).join("");
+  modal(`<h2>Ce que j’ai retenu</h2><p class="hint">Appuie sur ✕ pour me faire oublier un point.</p><div class="mt">${rows||'<p class="hint">Rien pour l’instant.</p>'}</div><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">OK</button></div>`);
+}
+function forget(kind,key){const o=JSON.stringify({L:S.L,P:S.P,r:S.rules});if(kind==="L")delete S.L[key];if(kind==="P")delete S.P[key];if(kind==="R")S.rules.splice(key,1);
+  pushUndo("oubli",()=>{const x=JSON.parse(o);S.L=x.L;S.P=x.P;S.rules=x.r;});save();showLearned();}
 function gigCheck(g){const w=Date.now()-S.trends.date<7*864e5;return [[w,"Regarder les tendances de la semaine","go('trend')"],[S.set.gig===g.id&&S.set.ids.length>1,`Préparer le set${S.set.gig===g.id&&S.set.ids.length?` (${S.set.ids.length} sons)`:""}`,`linkSet(${g.id})`],[!!(g.check&&g.check.usb),"Copier le set sur la clé USB",`linkSet(${g.id})`]];}
 function linkSet(id){if(S.set.gig!==id){const g=S.gigs.find(x=>x.id===id);if(S.set.ids.length<=1||confirmSwitch()){S.set.gig=id;S.set.name=(g.theme||g.type)+" · "+g.lieu;save();}}go("next");}
 function confirmSwitch(){return true;}
@@ -617,7 +643,7 @@ function libRows(){const q=norm(S.libQ).trim();
   const [k,d]=S.sort;r.sort((a,b)=>{let A=a[k],B=b[k];if(k==="k"){A=a.k?kn(a.k)*2+(kl(a.k)==="B"):99;B=b.k?kn(b.k)*2+(kl(b.k)==="B"):99;}if(A==null)A=d>0?"￿":"";if(B==null)B=d>0?"￿":"";if(typeof A==="string")return A.localeCompare(B,"fr")*d;return (A-B)*d;});
   return r;}
 VIEWS.lib=()=>{if(!S.tracks.length)return welcome();const vq=valQueue().length;const gs=["Tous",...new Set(visible().map(x=>x.g))];
-  return `<div class="row between"><div><h1>Bibliothèque</h1><p class="sub">${pl(visible().length,"son")} · BPM et tonalités de Serato, le reste estimé par SetMate. Il propose, tu valides.</p></div>
+  return `<div class="row between"><div><h1>Ma musique</h1><p class="sub">${pl(visible().length,"son")} · touche un son pour le voir en détail.</p></div>
     <div class="row"><button class="btn ghost sm" onclick="analyzeMissing()" ${H.music&&PERM.music==="granted"?"":"disabled data-tip='Connecte ton dossier Musique dans Réglages'"}>${svg("refresh",14)}Analyser l’énergie et les manques</button>
     <div class="seg"><button class="${S.libView==="all"?"on":""}" onclick="S.libView='all';S.sel=null;render()">Tous</button><button class="${S.libView==="check"?"on":""}" onclick="S.libView='check';S.sel=null;render()">À vérifier (${vq})</button></div></div></div>
   <div class="row" style="margin-bottom:12px"><input class="f" placeholder="Titre, artiste, style…" value="${esc(S.libQ)}" oninput="S.libQ=this.value;S.libLimit=200;libTable()" style="flex:1;min-width:180px;max-width:300px">
@@ -662,7 +688,7 @@ function setGenre(n,v){if(!v)return;const x=T(n),[g,sg]=v.split("|");const ak=no
   save(true);toast(`Corrigé : ${g} › ${sg}${changed.length>1?` (+${changed.length-1} sons du même artiste)`:""}.`,true);afterLib();}
 function hideTrack(n){const x=T(n);x.hidden=true;pushUndo("masquage",()=>{x.hidden=false});S.sel=null;save(true);toast("Masqué dans SetMate. Le fichier reste sur ton disque.",true);afterLib();}
 function notDup(n){const x=T(n),o=x.dupOf;x.dupOf=null;x.notDup=true;pushUndo("doublon",()=>{x.dupOf=o});save(true);afterLib();}
-function toTodo(n){const x=T(n);if(!S.todo.some(t=>baseTitle(t.t)===baseTitle(x.t)))S.todo.push({t:x.t,a:x.a,why:"Meilleure qualité",date:Date.now()});save();toast(`« ${esc(x.t)} » ajouté à « À récupérer ».`);renderNav();}
+function toTodo(n){const x=T(n);if(!S.todo.some(t=>baseTitle(t.t)===baseTitle(x.t)))S.todo.push({t:x.t,a:x.a,src:"qualite",why:"Meilleure qualité",date:Date.now()});save();toast(`« ${esc(x.t)} » ajouté à ta liste (Tendances › Ma liste).`);renderNav();}
 function afterLib(){renderNav();if(S.screen==="lib"){libTable();$("#libSide").innerHTML=libSide();}}
 let anaRun=false;
 async function analyzeOne(n){const x=T(n);const f=await fileOf(x);if(!f){toast("Fichier non accessible. Connecte ton dossier Musique dans Réglages.",false,true);return;}
@@ -700,33 +726,65 @@ function compat(cur,c,full=true){
 function suggestions(){const cur=T(S.cur);if(!cur)return [];
   return visible().filter(x=>x.n!==cur.n&&!S.set.ids.includes(x.n)&&!x.missing&&!(x.dupOf&&S.set.ids.includes(x.dupOf))).filter(x=>!S.sameGenre||x.g===cur.g).filter(x=>!S.keyF||x.k===S.keyF).map(x=>compat(cur,x)).sort((a,b)=>b.s-a.s).slice(0,5);}
 const scol=s=>s>=.75?"var(--green)":s>=.5?"var(--orange)":"var(--red)";
+const verdict=s=>s>=.85?["Parfait","ok"]:s>=.7?["Très bien","ok"]:s>=.5?["Possible","warn"]:["Risqué","bad"];
+const ALLKEYS=[];for(let n=1;n<=12;n++)for(const L of ["A","B"])ALLKEYS.push(n+L);
+function coverage(){const cnt={};visible().forEach(x=>{if(x.k)cnt[x.k]=(cnt[x.k]||0)+1;});return {cnt,n:ALLKEYS.filter(k=>cnt[k]).length,empty:ALLKEYS.filter(k=>!cnt[k])};}
+function onlinePool(){const seen=new Set(),out=[];
+  for(const x of [...S.trends.items,...(S.disc.items||[]),...Object.values(S.found||{}),...(S.search.items||[])]){if(!x||seen.has(x.dz))continue;seen.add(x.dz);const c=S.trendCache[x.dz];if(c&&!ownedTrend(x))out.push({...x,bpm:c.bpm,k:c.k,e:c.e,kSrc:"est"});}
+  return out;}
+function discoverSugg(){const cur=T(S.cur);if(!cur)return [];
+  return onlinePool().map(x=>compat(cur,x,false)).filter(r=>r.s>=.7).sort((a,b)=>b.s-a.s).slice(0,3);}
+function sugRow({c,s,why}){const [w,cl]=verdict(s);const main=[why[0][1],why[1][1],...why.filter(x=>x[0]==="learn").map(x=>x[1])].slice(0,3).join(" · ");const open=S.openWhy===c.n;
+  return `<div class="sg"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}
+    <div class="sgm" onclick="S.openWhy=${open?"null":c.n};softRender()"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span><div class="hint">${esc(main)} · <u>${open?"moins":"pourquoi ?"}</u></div>${open?`<div class="why">${why.map(([t,l])=>`<span class="tag ${t}">${esc(l)}</span>`).join("")}</div>`:""}</div>
+    <button class="play" onclick="playTrack(${c.n})" aria-label="Écouter">${svg(isPlaying(c)?"pause":"play",12)}</button><button class="btn sm add" onclick="addSet(${c.n})" aria-label="Ajouter au set">${svg("plus",15)}</button></div>`;}
+function discRow({c,s}){const [w,cl]=verdict(s);const inL=S.todo.some(t=>t.dz===c.dz);const on=PL&&PL.u==="dz"+c.dz;
+  return `<div class="sg disc"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}<div class="sgm"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span><div class="hint">${Math.round(c.bpm)} BPM · ${c.k} · ${c.peu?"pépite peu connue":"en tendance"}</div></div>
+    <button class="play ${on?"on":""}" onclick="playDz(${c.dz})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button><button class="btn sm ${inL?"ghost":"violet"}" onclick="addIdea(${c.dz})" ${inL?"disabled":""}>${inL?"✓ Dans ta liste":"+ Ma liste"}</button></div>`;}
 VIEWS.next=()=>{
-  if(!S.tracks.length)return welcome();
-  if(!visible().length)return welcome();
+  if(!S.tracks.length||!visible().length)return welcome();
   if(!T(S.cur)||T(S.cur).hidden){S.cur=visible()[0].n;if(!S.set.ids.length)S.set.ids=[S.cur];}
-  const cur=T(S.cur),sg=suggestions(),rules=ruleEffects();
-  const bars=Array.from({length:90},(_,i)=>`<i style="height:${18+Math.abs(Math.sin(i*.55+cur.n)*Math.cos(i*.13))*82}%;flex:1;border-radius:2px;background:linear-gradient(var(--blue),#1b5f99)"></i>`).join("");
-  return `<div class="row between"><div><h1>Son suivant</h1><p class="sub">Les 5 meilleurs sons pour enchaîner : BPM, tonalité, pas de répétition, et ce que tu m’as appris.</p></div>
-    <div style="position:relative;min-width:260px"><input class="f" id="pickQ" placeholder="Partir d’un autre son…" style="width:100%" oninput="pickDrop()" onfocus="pickDrop()" autocomplete="off"><div id="pickD"></div></div></div>
-  <div class="card hi now">${cover(cur,"lg")}<div style="min-width:0;flex:0 1 auto"><span class="tag info">Son de départ</span><div class="big" style="margin-top:4px">${esc(cur.t)}</div><div class="hint">${esc(cur.a)} · ${esc(cur.g)} › ${esc(cur.sg)}</div></div>
-    <div class="hm" style="flex:1;height:52px;display:flex;align-items:center;gap:2px;overflow:hidden;min-width:60px">${bars}</div>
-    <div style="text-align:center"><div class="big">${cur.bpm?Math.round(cur.bpm):"?"}</div><div class="hint">BPM</div></div><div style="text-align:center">${keyTag(cur.k,cur.kSrc==="est")}<div class="hint" style="margin-top:4px">${nrg(cur.e)}</div></div>
-    <button class="play" style="width:44px;height:44px" onclick="playTrack(${cur.n})">${svg(isPlaying(cur)?"pause":"play",16)}</button></div>
-  <div class="row mt"><span class="hint">Énergie :</span><div class="seg">${[["any","Peu importe"],["up","Monter"],["keep","Garder"],["down","Descendre"]].map(([v,l])=>`<button class="${S.dir===v?"on":""}" onclick="S.dir='${v}';save();render()">${l}</button>`).join("")}</div>
-    <button class="chip ${S.sameGenre?"on":""}" onclick="S.sameGenre=!S.sameGenre;render()">Même genre seulement</button>${S.keyF?`<button class="chip on" onclick="S.keyF=null;render()">Tonalité ${S.keyF} ✕</button>`:""}
-    ${rules.map(r=>`<span class="tag learn">Règle : ${r.sgn>0?"plus":"moins"} ${de(r.l)}</span>`).join("")}</div>
-  <div class="grid g-next mt"><div><h3>Les 5 meilleurs pour enchaîner</h3>
-    ${sg.length?sg.map(({c,s,why})=>`<div class="sg"><div class="sc"><b style="color:${scol(s)}">${Math.round(s*100)}</b><div class="bar"><i style="width:${s*100}%;background:${scol(s)}"></i></div></div>${cover(c)}
-      <div style="flex:1;min-width:0"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)} · ${c.bpm?Math.round(c.bpm)+" BPM":"BPM ?"}</span> ${keyTag(c.k,c.kSrc==="est")}<div class="why">${why.map(([t,l])=>`<span class="tag ${t}">${esc(l)}</span>`).join("")}</div></div>
-      <button class="play" onclick="playTrack(${c.n})">${svg(isPlaying(c)?"pause":"play",12)}</button><button class="btn sm" onclick="addSet(${c.n})">${svg("plus",13)}Set</button></div>`).join(""):`<div class="empty">Aucun son avec ces filtres.</div>`}</div>
-    <div class="card"><div class="row between"><h3>Roue Camelot</h3><span class="hint">clique une tonalité</span></div>${wheel(cur.k)}<p class="hint" style="text-align:center">En couleur : compatible avec ton son · sombre : à éviter</p></div></div>
+  const cur=T(S.cur),sg=suggestions(),ds=discoverSugg(),cov=coverage(),rules=ruleEffects(),opts=S.dir!=="any"||S.sameGenre||S.keyF;
+  return `<div class="row between"><div><h1>Préparer un set</h1><p class="sub">Choisis un son : je te dis lesquels enchaîner derrière.</p></div>
+    <div style="position:relative;flex:1;min-width:220px;max-width:340px"><input class="f" id="pickQ" placeholder="Partir d’un autre son…" style="width:100%" oninput="pickDrop()" onfocus="pickDrop()" autocomplete="off"><div id="pickD"></div></div></div>
+  ${tip("next","Appuie sur <b>+</b> pour ajouter un son à ton set. Les propositions se recalculent à partir de lui.")}
+  <div class="card hi now">${cover(cur,"lg")}<div style="flex:1;min-width:0"><span class="tag info">Tu joues</span><div class="big mt2" style="overflow:hidden;text-overflow:ellipsis">${esc(cur.t)}</div><div class="hint">${esc(cur.a)}</div></div>
+    <div style="text-align:center"><div class="big">${cur.bpm?Math.round(cur.bpm):"?"}</div><div class="hint">BPM</div></div>${keyTag(cur.k,cur.kSrc==="est")}
+    <button class="play" style="width:44px;height:44px" onclick="playTrack(${cur.n})" aria-label="Écouter">${svg(isPlaying(cur)?"pause":"play",16)}</button></div>
+  <div class="grid g-next mt"><div>
+    <div class="row between"><h3>Enchaîne avec</h3><button class="chip ${opts?"on":""}" onclick="S.showOpts=!S.showOpts;softRender()">Options${opts?" ●":""}</button></div>
+    ${S.showOpts?`<div class="card mt2" style="padding:12px"><div class="row"><span class="hint">Énergie</span><div class="seg">${[["any","Peu importe"],["up","Monter"],["keep","Garder"],["down","Descendre"]].map(([v,l])=>`<button class="${S.dir===v?"on":""}" onclick="S.dir='${v}';save();render()">${l}</button>`).join("")}</div></div>
+      <div class="row mt2"><button class="chip ${S.sameGenre?"on":""}" onclick="S.sameGenre=!S.sameGenre;render()">Même genre seulement</button>${S.keyF?`<button class="chip on" onclick="S.keyF=null;render()">Tonalité ${S.keyF} ✕</button>`:""}${rules.map(r=>`<span class="tag learn">Retenu : ${r.sgn>0?"plus":"moins"} ${de(r.l)}</span>`).join("")}</div></div>`:""}
+    ${sg.length?sg.map(sugRow).join(""):`<div class="empty">Aucun son ne correspond. Enlève une option.</div>`}
+    ${ds.length?`<h3 class="mt">À découvrir <span class="hint" style="font-weight:400">· pas encore dans ta musique</span></h3>${ds.map(discRow).join("")}`:""}
+  </div>
+  <div class="card"><div class="row between"><h3>Roue des tonalités</h3><span class="tag ${cov.n===24?"ok":"warn"}" data-tip="Tonalités où tu as au moins un son">${cov.n}/24</span></div>${wheel(cur.k,cov)}
+    <p class="hint" style="text-align:center">Couleur : compatible avec ton son.${cov.n<24?`<br>Pointillés : tu n’as aucun son. <b style="color:var(--txt)">Touche-les</b> pour en trouver.`:""}</p></div></div>
   ${setPanel()}`;};
-function wheel(k){const cx=120,cy=120,P=(r,a)=>[cx+r*Math.cos(a*Math.PI/180),cy+r*Math.sin(a*Math.PI/180)];
+function wheel(k,cov=coverage()){const cx=120,cy=120,P=(r,a)=>[cx+r*Math.cos(a*Math.PI/180),cy+r*Math.sin(a*Math.PI/180)];
   const seg=(r1,r2,a0,a1)=>{const[x1,y1]=P(r2,a0),[x2,y2]=P(r2,a1),[x3,y3]=P(r1,a1),[x4,y4]=P(r1,a0);return `M${x1},${y1} A${r2},${r2} 0 0 1 ${x2},${y2} L${x3},${y3} A${r1},${r1} 0 0 0 ${x4},${y4}Z`;};
-  const cnt={};visible().forEach(x=>{if(x.k)cnt[x.k]=(cnt[x.k]||0)+1;});let o="";
-  for(let n=1;n<=12;n++)for(const L of ["A","B"]){const key=n+L,a=(n%12)*30-90,[r1,r2]=L==="B"?[78,112]:[44,78];const ks=k?keyS(k,key)[0]:0,isC=key===k,op=isC?1:ks>=.85?.75:.13,[tx,ty]=P((r1+r2)/2,a);
-    o+=`<path d="${seg(r1+1,r2-1,a-14.2,a+14.2)}" fill="${isC?"#fff":keyColor(key)}" opacity="${op}" stroke="${S.keyF===key?"#fff":"none"}" stroke-width="2" onclick="S.keyF=S.keyF==='${key}'?null:'${key}';render()" data-tip="${key} · ${cnt[key]||0} sons"></path><text x="${tx}" y="${ty+3}" text-anchor="middle" fill="${op>.5?"#0b0b0d":"#9a9aa6"}">${key}</text>`;}
-  return `<svg class="wheel" viewBox="0 0 240 240" style="width:100%;max-width:260px;display:block;margin:6px auto">${o}<circle cx="120" cy="120" r="40" fill="var(--panel)"/><text x="120" y="124" text-anchor="middle" fill="#fff" style="font-size:16px;font-weight:800">${k||"?"}</text></svg>`;}
+  let o="";
+  for(const key of ALLKEYS){const n=kn(key),L=kl(key),a=(n%12)*30-90,[r1,r2]=L==="B"?[78,112]:[44,78];const ks=k?keyS(k,key)[0]:0,isC=key===k,c=cov.cnt[key]||0,[tx,ty]=P((r1+r2)/2,a);
+    const empty=!c&&!isC,op=isC?1:empty?.9:ks>=.85?.8:.16;
+    o+=`<path d="${seg(r1+1,r2-1,a-14.2,a+14.2)}" fill="${isC?"#fff":empty?"transparent":keyColor(key)}" opacity="${op}" stroke="${empty?keyColor(key):S.keyF===key?"#fff":"none"}" stroke-width="${empty?1.5:2}" ${empty?'stroke-dasharray="3 3"':""}
+      onclick="${empty?`findForKey('${key}')`:`S.keyF=S.keyF==='${key}'?null:'${key}';render()`}" data-tip="${key} · ${empty?"aucun son : touche pour en trouver":c+" son"+(c>1?"s":"")}"></path><text x="${tx}" y="${ty+3}" text-anchor="middle" fill="${empty?keyColor(key):op>.5?"#0b0b0d":"#8a8a96"}">${key}</text>`;}
+  return `<svg class="wheel" viewBox="0 0 240 240" style="width:100%;max-width:270px;display:block;margin:6px auto">${o}<circle cx="120" cy="120" r="40" fill="var(--panel)"/><text x="120" y="124" text-anchor="middle" fill="#fff" style="font-size:16px;font-weight:800">${k||"?"}</text></svg>`;}
+/** Trouve des sons (en ligne) dans une tonalité absente de sa bibliothèque : écoute les extraits jusqu’à en trouver 5. */
+let keyHunt=null;
+async function findForKey(key){
+  const hunt=keyHunt={key};
+  const listHtml=()=>{const f=onlinePool().filter(x=>x.k===key);return f.length?f.slice(0,8).map(x=>{const inL=S.todo.some(t=>t.dz===x.dz),on=PL&&PL.u==="dz"+x.dz;return `<div class="mini">${cover(x)}<div style="flex:1;min-width:0"><b>${esc(x.t)}</b><div class="hint">${esc(x.a)} · ${Math.round(x.bpm)} BPM${x.peu?" · pépite":""}</div></div><button class="play ${on?"on":""}" onclick="playDz(${x.dz})">${svg(on?"pause":"play",12)}</button><button class="btn sm ${inL?"ghost":"violet"}" onclick="addIdea(${x.dz});findRefresh()" ${inL?"disabled":""}>${inL?"✓":"+ Ma liste"}</button></div>`}).join(""):"";};
+  window.findRefresh=()=>{const b=$("#fkL");if(b)b.innerHTML=listHtml()||'<p class="hint">Je cherche…</p>';};
+  modal(`<h2>Des sons en ${key}</h2><p class="hint">Tu n’as aucun son dans cette tonalité. J’écoute des sons de tes styles pour t’en trouver.</p><div class="prog"><i id="fkP"></i></div><p class="hint" id="fkT">Recherche…</p><div class="mt" id="fkL"></div><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="keyHunt=null;closeModal()">Fermer</button></div>`);
+  findRefresh();
+  if(!(S.disc.items||[]).length)await loadDiscovery(true);
+  const cands=[...S.trends.items,...(S.disc.items||[]),...(S.disc.extra||[])].filter(x=>!S.trendCache[x.dz]&&!ownedTrend(x));
+  let tried=0,max=Math.min(120,cands.length);
+  for(const x of cands.slice(0,120)){if(keyHunt!==hunt)return;if(onlinePool().filter(y=>y.k===key).length>=5)break;
+    await analyzeDz(x);tried++;const p=$("#fkP");if(p)p.style.width=(tried/max*100)+"%";const t=$("#fkT");if(t)t.textContent=`${tried} sons écoutés · ${onlinePool().filter(y=>y.k===key).length} trouvés en ${key}`;findRefresh();}
+  const n=onlinePool().filter(y=>y.k===key).length;const t=$("#fkT");if(t)t.textContent=n?`${n} son${n>1?"s":""} trouvé${n>1?"s":""} en ${key}. Ajoute${n>1?"-les":"-le"} à ta liste pour ${n>1?"les":"le"} récupérer.`:`Pas trouvé de son en ${key} cette fois. Ajoute d’autres styles dans Tendances › Découverte.`;
+  const p=$("#fkP");if(p)p.style.width="100%";findRefresh();
+}
 function setPanel(){const items=S.set.ids.map(T).filter(Boolean);const W=280,H2=56;
   const pts=items.map((x,i)=>[items.length>1?10+i*(W-20)/(items.length-1):W/2,H2-8-((x.e||5)-1)/9*(H2-16)]);
   const gig=S.gigs.find(g=>g.id===S.set.gig);
@@ -896,58 +954,105 @@ function histParse(txt,name,mtime){
   modal(`<h2>Historique importé</h2><p class="mt2"><b>${pl(uniq.length,"son")}</b> reconnu${uniq.length>1?"s":""} et relié${uniq.length>1?"s":""} à « ${esc(g.lieu)} ».</p>${miss.length?`<p class="hint mt2">${pl(miss.length,"ligne")} non reconnue${miss.length>1?"s":""} : ${esc(miss.slice(0,6).join(" · "))}${miss.length>6?"…":""}</p>`:""}
    <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal();editGig(${g.id})">Renommer la soirée</button><button class="btn" onclick="closeModal();S.dGig=${g.id};go('debrief')">Faire le débrief</button></div>`);}
 
-/* ===================== TENDANCES (Deezer, en direct) ===================== */
+/* ===================== TENDANCES (Deezer, en direct) =====================
+   3 sources qui se répondent : « Du moment » (classements), « Découverte » (sons peu écoutés de ses styles),
+   et sa recherche libre. Tout ce qu’elle garde va dans « Ma liste ». */
 const SOURCES=[{id:"pl:1109890291",l:"Top France",g:null},{id:"chart:116",l:"Rap / Hip-hop",g:"rap"},{id:"chart:2",l:"Musique africaine",g:"afro"},{id:"chart:165",l:"R&B",g:"rnb"},{id:"pl:5964916564",l:"Amapiano",g:"amapiano"},{id:"chart:132",l:"Pop",g:"pop"}];
+const STYLES=[["amapiano","Amapiano"],["afrobeats","Afrobeats"],["afro house","Afro house"],["shatta","Shatta"],["dancehall","Dancehall"],["kompa","Kompa"],["zouk","Zouk"],["rap fr","Rap FR"],["drill fr","Drill"],["rnb","R&B"],["coupé décalé","Coupé-décalé"],["throwback rnb","Throwback"]];
+const PEU_CONNU=500000;   // popularité Deezer de 0 à 1 000 000 : en dessous, le son est peu écouté
 function jsonp(url,ms=8000){return new Promise((res,rej)=>{const cb="dz"+Date.now()+Math.floor(Math.random()*1e6),s=document.createElement("script");const clean=()=>{clearTimeout(to);delete window[cb];s.remove();};
   const to=setTimeout(()=>{clean();rej(new Error("délai dépassé"))},ms);window[cb]=d=>{clean();d&&d.error?rej(new Error(d.error.message||"erreur Deezer")):res(d)};s.onerror=()=>{clean();rej(new Error("réseau"))};
   s.src=url+(url.includes("?")?"&":"?")+"output=jsonp&callback="+cb;document.body.appendChild(s);});}
+const dzItem=t=>({dz:t.id,t:t.title_short||t.title,a:t.artist?t.artist.name:"",cover:t.album&&t.album.cover_medium,pop:t.rank||0});
 function lastThursday(){const d=new Date();d.setHours(8,0,0,0);while(d.getDay()!==4||d>new Date())d.setDate(d.getDate()-1);return d.getTime();}
-let trBusy=false;
+function ownedTrend(x){const bt=baseTitle(x.t),a=norm(x.a).split(" ")[1]||"";return S.tracks.some(t=>!t.hidden&&baseTitle(t.t)===bt&&(!a||norm(t.a).includes(" "+a)));}
+function findDz(dz){return S.trends.items.find(x=>x.dz===dz)||(S.disc.items||[]).find(x=>x.dz===dz)||(S.disc.extra||[]).find(x=>x.dz===dz)||(S.search.items||[]).find(x=>x.dz===dz)||(S.found||{})[dz]||S.todo.find(x=>x.dz===dz);}
+let trBusy=false,discBusy=false;
 async function refreshTrends(silent){
-  if(trBusy)return;trBusy=true;if(!silent)render();
+  if(trBusy)return;trBusy=true;if(!silent)softRender();
   const agg=new Map();let ok=0;
   for(const s of SOURCES.filter(s=>!s.g||S.genres[s.g])){try{const [k,id]=s.id.split(":");const d=await jsonp(k==="pl"?`https://api.deezer.com/playlist/${id}/tracks?limit=50`:`https://api.deezer.com/chart/${id}/tracks?limit=50`);ok++;
-    (d.data||[]).forEach((t,i)=>{const e=agg.get(t.id)||{dz:t.id,t:t.title_short||t.title,a:t.artist.name,cover:t.album&&t.album.cover_medium,score:0,srcs:[]};e.score+=(51-i)/50;e.srcs.push(s.l);agg.set(t.id,e);});}catch(e){}}
-  if(ok){const prev={};S.trends.items.forEach((x,i)=>prev[x.dz]=i+1);
-    const items=[...agg.values()].sort((a,b)=>b.score-a.score).slice(0,40).map((x,i)=>({...x,rank:i+1,prev:prev[x.dz]||null}));
-    const newMissing=items.filter(x=>!ownedTrend(x)).slice(0,15);
-    S.trends={date:Date.now(),items,prev};
-    for(const x of newMissing)if(!S.todo.some(t=>t.dz===x.dz||baseTitle(t.t)===baseTitle(x.t)))S.todo.push({t:x.t,a:x.a,dz:x.dz,why:"Tendance",date:Date.now()});
-    save();notify(`Récap tendances prêt : ${items.length} sons, ${items.filter(x=>!ownedTrend(x)).length} manquants`,"trend");analyzeTrends();}
+    (d.data||[]).forEach((t,i)=>{const e=agg.get(t.id)||{...dzItem(t),score:0,srcs:[]};e.score+=(51-i)/50;e.srcs.push(s.l);agg.set(t.id,e);});}catch(e){}}
+  if(ok){const prev={};S.trends.items.forEach(x=>prev[x.dz]=x.pos);
+    const items=[...agg.values()].sort((a,b)=>b.score-a.score).slice(0,40).map((x,i)=>({...x,pos:i+1,prev:prev[x.dz]||null}));
+    S.trends={date:Date.now(),items};
+    for(const x of items.filter(x=>!ownedTrend(x)).slice(0,10))if(!S.todo.some(t=>t.dz===x.dz||baseTitle(t.t)===baseTitle(x.t)))S.todo.push({t:x.t,a:x.a,dz:x.dz,cover:x.cover,src:"auto",why:`Tendance n°${x.pos}`,date:Date.now()});
+    save();notify(`Nouveautés prêtes : ${items.filter(x=>!ownedTrend(x)).length} sons que tu n’as pas`,"trend");analyzeQueue(items);}
   else if(!silent)toast("Impossible de joindre Deezer. Vérifie ta connexion internet.",false,true);
-  trBusy=false;if(S.screen==="trend"||S.screen==="home")render();
+  trBusy=false;if(["trend","home","next"].includes(S.screen))softRender();
 }
-function ownedTrend(x){const bt=baseTitle(x.t),a=norm(x.a).split(" ")[1]||"";return S.tracks.some(t=>!t.hidden&&baseTitle(t.t)===bt&&(!a||norm(t.a).includes(" "+a)));}
-let trAna=false;
-async function analyzeTrends(){if(trAna)return;trAna=true;
-  for(const x of S.trends.items){if(S.trendCache[x.dz])continue;try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`);if(!d.preview)continue;
-    const buf=await (await fetch(d.preview)).arrayBuffer();const r=smAnalyze(await decodeBytes(buf),30);if(r){S.trendCache[x.dz]={bpm:r.bpm,k:r.key,e:r.energy,kc:r.keyConf};save();if(S.screen==="trend")softRender();}}catch(e){}await sleep(150);}
-  trAna=false;}
-function softRender(){const st=$("#main").scrollTop;render();$("#main").scrollTop=st;}
+async function loadDiscovery(silent){
+  if(discBusy)return;discBusy=true;if(!silent)softRender();
+  const styles=STYLES.filter(([k])=>S.styles[k]);const per={},extra=[];const popular=new Set(S.trends.items.map(x=>x.dz));
+  for(const [k,l] of styles){try{
+    const pls=await jsonp(`https://api.deezer.com/search/playlist?q=${encodeURIComponent(k+" "+new Date().getFullYear())}&limit=4`);
+    const pl=(pls.data||[]).sort((a,b)=>b.nb_tracks-a.nb_tracks)[0];if(!pl)continue;
+    const d=await jsonp(`https://api.deezer.com/playlist/${pl.id}/tracks?limit=80`);
+    per[l]=(d.data||[]).filter(t=>t.preview&&!popular.has(t.id)).map(t=>({...dzItem(t),style:l,peu:(t.rank||0)<PEU_CONNU})).filter(x=>!ownedTrend(x));
+  }catch(e){}}
+  // mélange équitable entre styles, les sons peu connus d’abord
+  const lists=Object.values(per).map(a=>[...a.filter(x=>x.peu).sort((p,q)=>q.pop-p.pop),...a.filter(x=>!x.peu)]);const out=[],seen=new Set();
+  for(let i=0;out.length<45&&lists.some(a=>a[i]);i++)for(const a of lists){const x=a[i];if(x&&!seen.has(x.dz)){seen.add(x.dz);out.push(x);}}
+  lists.forEach(a=>a.forEach(x=>{if(!seen.has(x.dz)){seen.add(x.dz);extra.push(x);}}));
+  S.disc={date:Date.now(),items:out,extra:extra.slice(0,200)};save();discBusy=false;
+  if(out.length)analyzeQueue(out);if(["trend","next"].includes(S.screen))softRender();
+}
+async function analyzeDz(x){if(S.trendCache[x.dz])return S.trendCache[x.dz];
+  try{let url=x.preview;if(!url){const d=await jsonp(`https://api.deezer.com/track/${x.dz}`);url=d.preview;}if(!url)return null;
+    const buf=await (await fetch(url)).arrayBuffer();const r=smAnalyze(await decodeBytes(buf),30);
+    if(r){S.trendCache[x.dz]={bpm:r.bpm,k:r.key,e:r.energy,kc:r.keyConf};save();return S.trendCache[x.dz];}}catch(e){}return null;}
+const anaQ=[];let anaQRun=false;
+function analyzeQueue(list){list.forEach(x=>{if(!S.trendCache[x.dz]&&!anaQ.some(y=>y.dz===x.dz))anaQ.push(x);});if(!anaQRun)runAnaQ();}
+async function runAnaQ(){anaQRun=true;let n=0;while(anaQ.length){const x=anaQ.shift();await analyzeDz(x);n++;if(n%4===0&&["trend","next"].includes(S.screen)&&!$(".ov")&&document.activeElement?.id!=="trQ")softRender();await sleep(120);}
+  anaQRun=false;if(["trend","next"].includes(S.screen)&&!$(".ov")&&document.activeElement?.id!=="trQ")softRender();}
+async function doSearch(q){q=(q||"").trim();S.search={q,items:[],busy:!!q};if(!q){softRender();return;}softRender();
+  try{const d=await jsonp(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=25`);S.search={q,items:(d.data||[]).filter(t=>t.preview).map(t=>({...dzItem(t),peu:(t.rank||0)<PEU_CONNU})),busy:false};analyzeQueue(S.search.items.slice(0,12));}
+  catch(e){S.search={q,items:[],busy:false,err:e.message};}
+  softRender();}
+function addIdea(dz){const x=findDz(dz);if(!x)return;const ex=S.todo.find(t=>t.dz===dz);
+  if(ex){const o=ex.src;ex.src="moi";ex.why="Mon idée";pushUndo("ajout à ta liste",()=>{ex.src=o;});}
+  else{const it={t:x.t,a:x.a,dz,cover:x.cover,src:"moi",why:"Mon idée",date:Date.now()};S.todo.push(it);pushUndo("ajout à ta liste",()=>{S.todo=S.todo.filter(t=>t!==it);});}
+  save();renderNav();toast(`« ${esc(x.t)} » ajouté à ta liste.`,true);if(!$(".ov"))softRender();}
+function bestPlace(tx){return visible().filter(t=>baseTitle(t.t)!==baseTitle(tx.t)).map(t=>({t,s:compat(t,tx,false).s})).filter(p=>p.s>=.6).sort((a,b)=>b.s-a.s)[0]?.t||null;}
+function trRow(x,showPos){const own=ownedTrend(x),c=S.trendCache[x.dz],inL=S.todo.some(t=>t.dz===x.dz),tr=S.trends.items.find(y=>y.dz===x.dz),on=PL&&PL.u==="dz"+x.dz;
+  const bp=c&&!own?bestPlace({t:x.t,a:x.a,bpm:c.bpm,k:c.k}):null;
+  const mv=x.prev?x.prev-x.pos:null;
+  const meta=[c?`${Math.round(c.bpm)} BPM · ${c.k}`:"j’écoute…",bp?`va bien après <b>${esc(bp.t)}</b>`:""].filter(Boolean).join(" · ");
+  const flags=[!showPos&&tr?`<span style="color:var(--orange)">tendance n°${tr.pos}</span>`:"",x.peu&&!tr?`<span style="color:var(--violet)">pépite</span>`:"",x.style&&!showPos?esc(x.style):""].filter(Boolean).join(" · ");
+  return `<div class="trow">${showPos?`<div class="rank">${x.pos}<small style="color:${mv==null?"var(--blue)":mv>0?"var(--green)":mv<0?"var(--red)":"var(--muted)"}">${mv==null?"new":mv>0?"▲"+mv:mv<0?"▼"+(-mv):"="}</small></div>`:""}${cover(x)}
+    <div class="tm"><b>${esc(x.t)}</b><div class="hint">${esc(x.a)}${flags?" · "+flags:""}</div><div class="hint">${meta}</div></div>
+    ${own?'<span class="tag ok">Tu l’as</span>':""}<button class="play ${on?"on":""}" onclick="playDz(${x.dz})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>
+    ${own?"":inL?`<span class="tag info" data-tip="Déjà dans ta liste">✓ Liste</span>`:`<button class="btn sm add" onclick="addIdea(${x.dz})" aria-label="Ajouter à ma liste">${svg("plus",15)}</button>`}</div>`;}
 VIEWS.trend=()=>{
-  const it=S.trends.items;const has=it.length;const filt=it.filter(x=>S.trSrc==="Toutes"||x.srcs.includes(S.trSrc));
-  const age=S.trends.date?Math.round((Date.now()-S.trends.date)/36e5):null;
-  const todoHtml=S.todo.length?S.todo.map((t,i)=>`<div class="mini"><div style="flex:1;min-width:0"><b>${esc(t.t)}</b><div class="hint">${esc(t.a)} · ${esc(t.why)}</div></div>${t.dz?`<button class="play" onclick="playDz(${t.dz})">${svg(PL&&PL.u==="dz"+t.dz?"pause":"play",12)}</button>`:""}<button class="mi" onclick="rmTodo(${i})" data-tip="Retirer">${svg("x",14)}</button></div>`).join(""):`<div class="empty">${svg("check",36)}<div>Rien à récupérer.</div></div>`;
-  return `<div class="row between"><div><h1>Tendances de la semaine</h1><p class="sub">${has?`Mis à jour ${age<1?"à l’instant":age<24?"il y a "+age+" h":"il y a "+Math.round(age/24)+" j"} · `:""}Source : Deezer (Top France et classements par genre), mise à jour automatique chaque jeudi.</p></div>
-    <button class="btn ${has?"ghost":""}" onclick="refreshTrends()" ${trBusy?"disabled":""}>${svg("refresh",14)}${trBusy?"Recherche…":has?"Actualiser":"Lancer la veille"}</button></div>
-  ${has?`<div class="row" style="margin-bottom:12px">${["Toutes",...SOURCES.filter(s=>!s.g||S.genres[s.g]).map(s=>s.l)].map(s=>`<button class="chip ${S.trSrc===s?"on":""}" data-s="${esc(s)}" onclick="S.trSrc=this.dataset.s;render()">${esc(s)}</button>`).join("")}</div>`:""}
-  <div class="grid g-next"><div class="card" style="padding:6px 14px">${has?filt.map(x=>{const own=ownedTrend(x),c=S.trendCache[x.dz];const tx={t:x.t,a:x.a,bpm:c?.bpm,k:c?.k,cover:x.cover};
-      const best=c?visible().filter(t=>baseTitle(t.t)!==baseTitle(x.t)).map(t=>({lib:t,s:compat(t,tx,false).s})).filter(p=>p.s>=.5).sort((p,q)=>q.s-p.s).slice(0,2):[];
-      const mv=x.prev?x.prev-x.rank:null;
-      return `<div class="trend"><div class="rank">${x.rank}<small style="color:${mv==null?"var(--blue)":mv>0?"var(--green)":mv<0?"var(--red)":"var(--muted)"}">${mv==null?"nouveau":mv>0?"▲ "+mv:mv<0?"▼ "+(-mv):"="}</small></div>${cover(x)}
-        <div style="min-width:0"><b>${esc(x.t)}</b> <span class="hint">· ${esc(x.a)}</span><div class="hint">${c?`~${Math.round(c.bpm)} BPM · ${keyTag(c.k,true)} · énergie ${c.e}/10`:"analyse en cours…"} · ${x.srcs.map(s=>`<span class="src">${esc(s)}</span>`).join("")}</div>
-        ${best.length?`<div class="place">Où le placer : après <b>${best.map(p=>esc(p.lib.t)).join("</b> ou <b>")}</b></div>`:c&&visible().length?`<div class="place">Aucun de tes sons ne s’enchaîne bien avec pour l’instant.</div>`:""}</div>
-        <span class="tag ${own?"ok":"warn"} hm2">${own?"Déjà dans tes sons":"Manquant"}</span><button class="play ${PL&&PL.u==="dz"+x.dz?"on":""}" onclick="playDz(${x.dz})">${svg(PL&&PL.u==="dz"+x.dz?"pause":"play",12)}</button></div>`}).join("")
-      :`<div class="empty">${svg("trend",40)}<div>${trBusy?"Je récupère les classements…":"Clique sur « Lancer la veille » pour récupérer les sons du moment."}</div></div>`}</div>
-    <div><div class="card"><div class="row between"><h3>À récupérer</h3><span class="tag warn">${S.todo.length}</span></div><p class="hint">Récupère-les à ta façon. ${H.dl&&PERM.dl==="granted"?"Je surveille ton dossier Téléchargements : dès qu’un fichier arrive, je te propose de le classer.":"Connecte ton dossier Téléchargements (Réglages) pour que je repère les nouveaux fichiers."}</p><div class="mt2">${todoHtml}</div></div>
-      ${it.length>=2?contentIdea():""}
-      <div class="card mt"><h3>Sources</h3><p class="hint mt2"><span class="tag ok">Active</span> Deezer : Top France et classements.<br><span class="tag">Indisponible</span> TikTok : aucun accès officiel aux sons tendances.<br><span class="tag">Indisponible</span> Spotify : fermé aux nouvelles applications depuis fin 2024.</p></div></div></div>`;};
-function contentIdea(){const a=S.trends.items[0],b=S.trends.items.find((x,i)=>i>0&&S.trendCache[x.dz]&&S.trendCache[a.dz]&&keyS(S.trendCache[a.dz].k,S.trendCache[x.dz].k)[0]>=.85)||S.trends.items[1];
-  const ca=S.trendCache[a.dz],cb=S.trendCache[b.dz];
-  return `<div class="card mt" style="border-color:#3a2d55;background:linear-gradient(135deg,rgba(167,123,255,.10),var(--panel) 60%)"><span class="tag learn">Idée de contenu</span><h3 class="mt2">« Les sons du moment, enchaînés en 15 s »</h3>
-  <p class="hint mt2">${esc(a.t)} → ${esc(b.t)}${ca&&cb?` : ${keyS(ca.k,cb.k)[1].toLowerCase()}, ${pitch(ca.bpm,cb.bpm).lab}`:""}. Filme la transition en vertical, texte : « Le combo du week-end ».</p></div>`;}
-function rmTodo(i){const t=S.todo.splice(i,1)[0];pushUndo("retrait de la liste",()=>S.todo.splice(i,0,t));save();render();}
-
+  const it=S.trends.items,dsc=S.disc.items||[],tab=S.trTab||"moment";
+  const listN=S.todo.length;
+  const head=`<div class="row between"><div><h1>Tendances</h1><p class="sub">Les sons du moment, des pépites de tes styles, et ta propre recherche.</p></div></div>
+   <form class="sbar" onsubmit="event.preventDefault();doSearch($('#trQ').value)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+     <input id="trQ" placeholder="Cherche n’importe quel son ou artiste…" value="${esc(S.search.q||"")}" autocomplete="off" enterkeyhint="search">${S.search.q?`<button type="button" class="mi" onclick="doSearch('')" aria-label="Effacer">${svg("x",14)}</button>`:""}<button class="btn sm" type="submit">Chercher</button></form>`;
+  if(S.search.q){const r=S.search.items;
+    return head+`<div class="row between mt"><h3>Résultats pour « ${esc(S.search.q)} »</h3><button class="chip" onclick="doSearch('')">Revenir aux tendances</button></div>
+      <div class="card mt2" style="padding:4px 14px">${S.search.busy?`<div class="empty">Je cherche…</div>`:S.search.err?`<div class="empty">Recherche impossible : ${esc(S.search.err)}</div>`:r.length?r.map(x=>trRow(x,false)).join(""):`<div class="empty">Aucun résultat.</div>`}</div>`;}
+  const tabs=`<div class="seg mt" style="display:flex;width:100%;max-width:520px">${[["moment","Du moment"],["decouverte","Découverte"],["liste",`Ma liste${listN?" ("+listN+")":""}`]].map(([k,l])=>`<button style="flex:1;text-align:center" class="${tab===k?"on":""}" onclick="S.trTab='${k}';save();openTab('${k}')">${l}</button>`).join("")}</div>`;
+  let body="";
+  if(tab==="moment"){const age=S.trends.date?Math.round((Date.now()-S.trends.date)/36e5):null;
+    body=`<div class="row between mt"><span class="hint">${it.length?`Top France et classements · ${age<1?"à l’instant":age<24?"il y a "+age+" h":"il y a "+Math.round(age/24)+" j"} · mis à jour chaque jeudi`:""}</span><button class="chip" onclick="refreshTrends()" ${trBusy?"disabled":""}>${trBusy?"Mise à jour…":"Actualiser"}</button></div>
+      <div class="card mt2" style="padding:4px 14px">${it.length?it.map(x=>trRow(x,true)).join(""):`<div class="empty">${trBusy?"Je récupère les classements…":`<button class="btn" onclick="refreshTrends()">Voir les sons du moment</button>`}</div>`}</div>`;}
+  if(tab==="decouverte"){
+    body=`<p class="hint mt">Des sons <b style="color:var(--txt)">peu connus</b> qui collent à tes styles. Choisis tes styles :</p>
+      <div class="row mt2">${STYLES.map(([k,l])=>`<button class="chip ${S.styles[k]?"on":""}" onclick="S.styles['${k}']=S.styles['${k}']?0:1;save();softRender()">${l}</button>`).join("")}<button class="chip" onclick="loadDiscovery()" ${discBusy?"disabled":""}>${discBusy?"Je cherche…":"Nouvelles pépites"}</button></div>
+      <div class="card mt" style="padding:4px 14px">${dsc.length?dsc.map(x=>trRow(x,false)).join(""):`<div class="empty">${discBusy?"Je fouille les playlists de tes styles…":`<button class="btn" onclick="loadDiscovery()">Trouver des pépites</button>`}</div>`}</div>`;}
+  if(tab==="liste"){
+    const grp=(title,desc,items)=>items.length?`<h3 class="mt">${title} <span class="hint" style="font-weight:400">· ${desc}</span></h3><div class="card mt2" style="padding:4px 14px">${items.map(t=>{const i=S.todo.indexOf(t),on=t.dz&&PL&&PL.u==="dz"+t.dz;
+      return `<div class="trow">${cover(t)}<div class="tm"><b>${esc(t.t)}</b><div class="hint">${esc(t.a)} · ${esc(t.why||"")}</div></div>${t.dz?`<button class="play ${on?"on":""}" onclick="playDz(${t.dz})">${svg(on?"pause":"play",12)}</button>`:""}${t.src==="auto"?`<button class="btn sm ghost" onclick="keepIdea(${i})">Garder</button>`:""}<button class="mi" onclick="rmTodo(${i})" aria-label="Retirer">${svg("x",14)}</button></div>`;}).join("")}</div>`:"";
+    const mine=S.todo.filter(t=>t.src==="moi"),soir=S.todo.filter(t=>t.src==="soiree"),qual=S.todo.filter(t=>t.src==="qualite"),auto=S.todo.filter(t=>t.src==="auto");
+    body=`<p class="hint mt">Ta liste de sons à récupérer. ${H.dl&&PERM.dl==="granted"?"Dès qu’un fichier arrive dans Téléchargements, je te propose de le ranger.":"Connecte ton dossier Téléchargements (Réglages) : je rangerai les fichiers dès qu’ils arrivent."}</p>
+      ${grp("Mes idées","ajoutés par toi",mine)}${grp("Demandés en soirée","entendus pendant tes débriefs",soir)}${grp("À remplacer","meilleure qualité",qual)}${grp("Proposés par SetMate","tendances que tu n’as pas · « Garder » pour les passer dans tes idées",auto)}
+      ${S.todo.length?"":`<div class="card mt"><div class="empty">Ta liste est vide. Appuie sur <b>+</b> à côté d’un son pour l’ajouter.</div></div>`}`;}
+  return head+tabs+tip("trend","Le <b>+</b> ajoute un son à ta liste. « Va bien après » te dit avec quel son de ta musique l’enchaîner.")+body+`<p class="hint mt">Source : Deezer. TikTok n’a pas d’accès officiel, Spotify est fermé aux nouvelles applis.</p>`;
+};
+function openTab(k){if(k==="decouverte"&&!(S.disc.items||[]).length&&!discBusy)loadDiscovery();else if(k==="moment"&&!S.trends.items.length&&!trBusy)refreshTrends();else softRender();}
+function keepIdea(i){const t=S.todo[i];if(!t)return;const o=[t.src,t.why];t.src="moi";t.why="Mon idée";pushUndo("garder",()=>{[t.src,t.why]=o;});save();softRender();}
+function rmTodo(i){const t=S.todo.splice(i,1)[0];pushUndo("retrait de la liste",()=>S.todo.splice(i,0,t));save();renderNav();softRender();}
 /* ===================== SURVEILLANCE DES TÉLÉCHARGEMENTS ===================== */
 let watchT=null;const AUDIO=/\.(mp3|m4a|aac|wav|aiff?|flac|ogg|alac)$/i;
 function startWatch(){clearInterval(watchT);if(H.dl&&PERM.dl==="granted"){scanDl();watchT=setInterval(scanDl,60000);}}
@@ -1039,7 +1144,7 @@ function applyDebrief(){const g=S.gigs.find(x=>x.id===S.dGig);const snap=JSON.st
   const on=S.dPts.filter(p=>p.on&&p.type!=="unsure");const lab=fmtDate(g.date);
   on.forEach(p=>{if(p.type==="up")S.L[p.n]={v:.12,why:`▲ A marché (${lab})`};if(p.type==="down")S.L[p.n]={v:-.3,why:`▼ Flop en ${g.type.toLowerCase()} (${lab})`};
     if(p.type==="pair")S.P[p.a+">"+p.b]={v:.18,why:`▲ Enchaînement validé (${lab})`};if(p.type==="pairdown")S.P[p.a+">"+p.b]={v:-.3,why:`▼ Enchaînement raté (${lab})`};
-    if(p.type==="rule")S.rules.push(p.text);if(p.type==="req"){p.tr.forEach(dz=>{const x=S.trends.items.find(y=>y.dz===dz);if(x&&!ownedTrend(x)&&!S.todo.some(t=>t.dz===dz))S.todo.push({t:x.t,a:x.a,dz,why:"Demandé en soirée",date:Date.now()});});p.ids.forEach(n=>{S.L[n]={v:.08,why:`▲ Demandé par le public (${lab})`};});}});
+    if(p.type==="rule")S.rules.push(p.text);if(p.type==="req"){p.tr.forEach(dz=>{const x=S.trends.items.find(y=>y.dz===dz);if(!x||ownedTrend(x))return;const ex=S.todo.find(t=>t.dz===dz);if(ex){ex.src="soiree";ex.why="Demandé en soirée";}else S.todo.push({t:x.t,a:x.a,dz,cover:x.cover,src:"soiree",why:"Demandé en soirée",date:Date.now()});});p.ids.forEach(n=>{S.L[n]={v:.08,why:`▲ Demandé par le public (${lab})`};});}});
   g.deb={n:on.length,date:Date.now()};g.notes=(g.notes||"")+(S.dTxt||"");
   pushUndo("application du débrief",()=>{const o=JSON.parse(snap);S.L=o.L;S.P=o.P;S.rules=o.r;S.todo=o.todo;g.deb=o.deb;g.notes=o.notes;});
   S.dPts=null;S.dTxt="";save();notify(`Débrief du ${lab} appliqué : ${pl(on.length,"point")}`,"home");go("home");toast(`Débrief appliqué : ${pl(on.length,"point")} retenu${on.length>1?"s":""}.`,true);}
@@ -1082,12 +1187,12 @@ async function playTrack(n){const x=T(n);const u="t"+n;if(PL&&PL.u===u)return st
 async function dzSearch(x){const k=x.a+"|"+x.t;if(k in DZC)return DZC[k];try{const art=String(x.a).split(/,|&| feat/i)[0].trim(),tit=String(x.t).replace(/\(.*\)/,"").trim();
   const d=await jsonp("https://api.deezer.com/search?q="+encodeURIComponent(art+" "+tit)+"&limit=5");const a0=norm(art).trim().split(" ")[0];
   const r=(d.data||[]).find(it=>it.preview&&norm(it.artist?.name).includes(a0)&&norm(it.title).includes(norm(tit).trim().split(" ")[0]));DZC[k]=r?{preview:r.preview,cover:r.album?.cover_medium}:null;}catch(e){DZC[k]=null;}return DZC[k];}
-async function playDz(dz){const u="dz"+dz;if(PL&&PL.u===u)return stopPlay();stopPlay();const it=S.trends.items.find(x=>x.dz===dz)||S.todo.find(x=>x.dz===dz)||{t:"…",a:""};PL={u,x:{t:it.t,a:it.a,cover:it.cover,k:S.trendCache[dz]?.k,bpm:S.trendCache[dz]?.bpm},src:"…"};renderPlayer();refreshPlay();
+async function playDz(dz){const u="dz"+dz;if(PL&&PL.u===u)return stopPlay();stopPlay();const it=findDz(dz)||{t:"…",a:""};PL={u,x:{t:it.t,a:it.a,cover:it.cover,k:S.trendCache[dz]?.k,bpm:S.trendCache[dz]?.bpm},src:"…"};renderPlayer();refreshPlay();
   try{const d=await jsonp(`https://api.deezer.com/track/${dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";await AU.play();startProg();}catch(e){toast("Extrait indisponible.",false,true);return stopPlay();}renderPlayer();refreshPlay();}
 function startProg(){clearInterval(progT);progT=setInterval(()=>{const b=$("#pbar");if(b&&AU.duration)b.style.width=(AU.currentTime/AU.duration*100)+"%";},250);}
 AU.onended=()=>stopPlay();
 function stopPlay(){AU.pause();clearInterval(progT);if(AU.src.startsWith("blob:"))URL.revokeObjectURL(AU.src);PL=null;renderPlayer();refreshPlay();}
-function refreshPlay(){if(S.screen==="lib")libTable();else if(["next","trend"].includes(S.screen))softRender();}
+function refreshPlay(){if($(".ov")){if(window.findRefresh)findRefresh();return;}if(S.screen==="lib")libTable();else if(["next","trend"].includes(S.screen))softRender();}
 function renderPlayer(){const p=$("#player");p.style.display=(!PL&&MOBILE)?"none":"";if(!PL){p.innerHTML=`<span class="hint">Clique ▶ sur un son pour l’écouter${H.music&&PERM.music==="granted"?" (tes fichiers)":" (extraits Deezer, ou tes fichiers si le dossier Musique est connecté)"}.</span><div class="tsp"></div><span class="kbd">Espace</span>`;return;}
   const x=PL.x;p.innerHTML=`${cover(x)}<div class="info"><b>${esc(x.t)}</b><small>${esc(x.a)}${x.bpm?" · "+Math.round(x.bpm)+" BPM":""} · ${esc(PL.src)}</small></div><button class="play on" onclick="stopPlay()">${svg("pause",12)}</button><div class="pbar"><i id="pbar"></i></div>${keyTag(x.k)}`;}
 
@@ -1116,8 +1221,8 @@ window.addEventListener("focus",()=>{if(H.dl&&PERM.dl==="granted")scanDl();});
 (async()=>{await load();
   if(H.serato&&PERM.serato==="granted"&&!S.demo)await loadSerato(false);
   render();startWatch();
-  if(S.tracks.length&&Date.now()>0&&S.trends.date<lastThursday())refreshTrends(true);
-  else if(S.trends.items.length)analyzeTrends();
+  if(S.trends.date<lastThursday())await refreshTrends(true);else analyzeQueue(S.trends.items);
+  if(S.tracks.length&&(!S.disc.date||Date.now()-S.disc.date>7*864e5))loadDiscovery(true);else analyzeQueue(S.disc.items||[]);
   if(!DB.ok)toast("Stockage indisponible dans ce navigateur : tes données ne seront pas gardées après fermeture.",false,true);
 })();
 </script>
