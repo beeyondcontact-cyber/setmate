@@ -174,10 +174,14 @@ textarea.f{width:100%;min-height:110px;resize:vertical;line-height:1.55}
 .notif{position:fixed;top:56px;right:18px;width:340px;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 30px 70px rgba(0,0,0,.55);z-index:40;padding:6px;max-height:60vh;overflow:auto}
 .notif .it{display:flex;gap:10px;padding:10px;border-radius:8px;cursor:pointer}.notif .it:hover{background:var(--panel2)}
 .notif .it i{width:8px;height:8px;border-radius:50%;background:var(--blue);margin-top:6px;flex:none}
-.toasts{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:60;align-items:center;max-width:92vw}
+.toasts{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:60;align-items:center;max-width:92vw;pointer-events:none}
 .toast{background:#1c2633;border:1px solid #2f5d86;color:#fff;padding:10px 12px 10px 16px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.5);animation:pop .25s var(--ease)}
 .toast.err{background:#331c22;border-color:#86303f}
-.toast button{all:unset;cursor:pointer;color:var(--blue);font-weight:700;padding:2px 6px}
+.toast button{all:unset;cursor:pointer;color:var(--blue);font-weight:700;padding:2px 6px;pointer-events:auto}
+.toast{max-width:min(420px,92vw);pointer-events:none}.toast .tm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.toast.out{opacity:0;transition:opacity .18s}
+.sgt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .row .btn.sm{white-space:normal;text-align:center;max-width:100%}.sgw{overflow-wrap:anywhere}
+.setrow.flash{animation:flash 1.1s var(--ease)}@keyframes flash{0%{background:rgba(47,164,255,.35);border-color:var(--blue)}100%{background:var(--panel2)}}
 .tip{position:fixed;pointer-events:none;background:#000;border:1px solid var(--line2);color:#fff;font-size:12px;padding:6px 9px;border-radius:7px;z-index:70;opacity:0;max-width:260px}
 .conn{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);margin-top:8px}
 .conn .ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none}
@@ -201,7 +205,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
 .trow .rank{width:30px;flex:none}
 .sgm{flex:1;min-width:0;cursor:pointer}.sgm b{white-space:nowrap}
 .sg .sc{width:auto;min-width:76px}
-.sg.disc{border-style:dashed;border-color:#3a2d55}
+.sg.sgd{border-style:dashed;border-color:#3a2d55}
 .btn.violet{background:var(--violet);color:#160b2e}
 .btn.add{width:34px;height:34px;padding:0;border-radius:50%}
 .tipbox{display:flex;align-items:center;gap:12px;justify-content:space-between;background:rgba(47,164,255,.07);border:1px solid #23466a;border-radius:10px;padding:9px 12px;margin:0 0 14px;font-size:13px;color:#cfe6ff}
@@ -222,7 +226,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
   main{padding:16px 14px;overflow:visible}
   .player{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));z-index:20;padding:8px 12px}
   .player .info{flex-basis:120px}
-  .toasts{bottom:calc(132px + env(safe-area-inset-bottom));width:92vw}
+  .toasts{bottom:auto;top:calc(62px + env(safe-area-inset-top));width:92vw}
   .notif{left:10px;right:10px;width:auto}
   .grid>[style*="grid-column"]{grid-column:auto!important}
   .g2,.g3,.g-lib,.g-next{grid-template-columns:1fr}.hm{display:none}
@@ -232,7 +236,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
   .tipbox{flex-direction:column;align-items:flex-start}
   .trend{grid-template-columns:28px 36px 1fr auto}.trend .hm2{display:none}.tw{max-height:none}
   .tbl td,.tbl th{padding:7px 5px}.tt b,.tt small{max-width:150px}
-  .now,.sg{flex-wrap:wrap}.sg>.cv{display:none}.sg>div:nth-child(3){flex:1 1 70%}.sg>.btn{margin-left:auto}
+  .now,.sg{flex-wrap:wrap}.now>div:nth-child(2){flex:1 1 55%}.now .big{overflow-wrap:anywhere}.sg>.cv{display:none}.sg>div:nth-child(3){flex:1 1 70%}.sg>.btn{margin-left:auto}
   .setrow .cv{display:none}
   .modal{padding:18px}
   .mic{width:112px;height:112px}
@@ -259,7 +263,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
   </div>
 </div>
 <div id="notifBox"></div>
-<div class="toasts" id="toasts"></div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 <div class="tip" id="tip"></div>
 <div id="layer"></div>
 <input type="file" id="fileIn" style="display:none">
@@ -270,7 +274,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.2";
+const VERSION="1.3";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -292,7 +296,7 @@ const S={
   libQ:"",libG:"Tous",libB:"all",libView:"all",sort:["t",1],sel:null,libLimit:200,crates:{},
   L:{},P:{},rules:[],genreFix:{},todo:[],notifs:[],gigs:[],created:[],
   trends:{date:0,items:[]},trendCache:{},genres:{rap:1,afro:1,rnb:1,amapiano:1,pop:1},
-  disc:{date:0,items:[],extra:[]},search:{q:"",items:[]},found:{},trTab:"moment",tips:{},showOpts:false,openWhy:null,
+  flags:{},reco:{ttl:30},disc:{date:0,items:[],extra:[]},search:{q:"",items:[]},found:{},trTab:"moment",tips:{},showOpts:false,openWhy:null,
   styles:{amapiano:1,afrobeats:1,shatta:1,dancehall:1,kompa:1,"rap fr":1,rnb:1},
   dGig:null,dTxt:"",dPts:null,dlLast:0,onboarded:false,undo:[]
 };
@@ -303,7 +307,7 @@ function reindex(){byN=new Map();byPath=new Map();S.tracks.forEach(t=>{byN.set(t
 const T=n=>byN.get(n);
 let saveT=null,tracksDirty=false;
 function save(tracksToo=false){if(tracksToo)tracksDirty=true;clearTimeout(saveT);saveT=setTimeout(async()=>{
-  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab"])st[k]=S[k];
+  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco"])st[k]=S[k];
   await DB.set("state",st);if(tracksDirty){await DB.set("tracks",S.tracks);tracksDirty=false;}},400);}
 async function load(){
   await DB.open();
@@ -466,13 +470,36 @@ const de=l=>/^[aeiouyh]/i.test(l)?"d’"+l:"de "+l;
 const pl=(n,w)=>`${n} ${w}${n>1?"s":""}`;
 
 /* ===================== TOASTS, ANNULER, INFOBULLES ===================== */
-function toast(msg,undo=false,err=false){const el=document.createElement("div");el.className="toast"+(err?" err":"");
-  el.innerHTML=`<span>${msg}</span>${undo?'<button onclick="doUndo();this.parentElement.remove()">Annuler</button>':""}`;$("#toasts").appendChild(el);setTimeout(()=>el.remove(),undo?6000:4200);}
+/* CHG-04 : un seul message à la fois, compact, regroupé (« 3 sons ajoutés »), qui ne bloque jamais les clics. */
+const TOAST={el:null,group:null,count:0,timer:null};
+const GROUP_LABEL={ajout:n=>`${n} sons ajoutés au set`,lib:n=>`${n} sons ajoutés à ta musique`,refus:n=>`${n} sons écartés pour cette session`};
+function toast(msg,undo=false,err=false,group=null){
+  const box=$("#toasts");
+  if(!flag("toast2")){const el=document.createElement("div");el.className="toast"+(err?" err":"");el.innerHTML=`<span>${msg}</span>${undo?'<button onclick="doUndo();this.parentElement.remove()">Annuler</button>':""}`;box.appendChild(el);setTimeout(()=>el.remove(),undo?6000:4200);return;}
+  if(group&&TOAST.group===group&&TOAST.el&&TOAST.el.isConnected){TOAST.count++;if(GROUP_LABEL[group])msg=GROUP_LABEL[group](TOAST.count);}else TOAST.count=1;
+  box.innerHTML="";const el=document.createElement("div");el.className="toast"+(err?" err":"");
+  el.innerHTML=`<span class="tm">${msg}</span>${undo?'<button onclick="doUndo();this.parentElement.remove()">Annuler</button>':""}`;box.appendChild(el);
+  TOAST.el=el;TOAST.group=group;clearTimeout(TOAST.timer);
+  TOAST.timer=setTimeout(()=>{el.classList.add("out");setTimeout(()=>el.remove(),180);if(TOAST.el===el){TOAST.group=null;TOAST.el=null;}},err?4000:2000);}   // l’annulation reste possible ensuite via ↶ ou Ctrl/Cmd+Z
 function pushUndo(label,fn){S.undo.push({label,fn});updUndo();}
 async function doUndo(){const u=S.undo.pop();if(!u)return;try{await u.fn();}catch(e){toast("Annulation impossible : "+esc(e.message),false,true);}updUndo();save(true);render();toast("Annulé : "+u.label);}
 function updUndo(){const b=$("#undoBtn");b.disabled=!S.undo.length;b.dataset.tip=S.undo.length?"Annuler : "+S.undo[S.undo.length-1].label:"Rien à annuler";}
-document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");const tp=$("#tip");if(!el){tp.style.opacity=0;return;}tp.textContent=el.dataset.tip;tp.style.opacity=1;});
-document.addEventListener("mousemove",e=>{const tp=$("#tip");tp.style.left=Math.min(e.clientX+14,innerWidth-270)+"px";tp.style.top=(e.clientY+16)+"px";});
+/* CHG-05 : infobulle seulement avec une vraie souris, toujours entière dans l’écran (elle se retourne près des bords),
+   jamais au toucher, fermée au défilement / clic / appui. */
+let lastTouch=0;const canHover=()=>matchMedia("(hover:hover) and (pointer:fine)").matches;
+function hideTip(){const tp=$("#tip");if(tp)tp.style.opacity=0;}
+function placeTip(x,y){const tp=$("#tip"),w=tp.offsetWidth,h=tp.offsetHeight,m=8;
+  let L=x+14,T2=y+16;if(L+w>innerWidth-m)L=Math.max(m,x-14-w);if(T2+h>innerHeight-m)T2=Math.max(m,y-12-h);tp.style.left=L+"px";tp.style.top=T2+"px";}
+document.addEventListener("touchstart",()=>{lastTouch=Date.now();hideTip();},{passive:true});
+document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");const tp=$("#tip");
+  if(flag("tip2")&&(Date.now()-lastTouch<800||!canHover())){hideTip();return;}
+  if(!el){tp.style.opacity=0;return;}tp.textContent=el.dataset.tip;tp.style.opacity=1;if(flag("tip2")&&e.clientX!=null)placeTip(e.clientX,e.clientY);});
+document.addEventListener("mousemove",e=>{const tp=$("#tip");if(flag("tip2")){if(tp.style.opacity!=="0")placeTip(e.clientX,e.clientY);return;}tp.style.left=Math.min(e.clientX+14,innerWidth-270)+"px";tp.style.top=(e.clientY+16)+"px";});
+addEventListener("scroll",()=>{if(flag("tip2"))hideTip();},true);
+document.addEventListener("click",()=>{if(flag("tip2"))hideTip();},true);
+/* Interrupteurs des correctifs (retour arrière sans toucher au code) */
+const FLAG_INFO={reco2:"Suggestions sans répétition (CHG-01)",toast2:"Messages d’ajout compacts (CHG-04)",tip2:"Infobulles stables (CHG-05)",nrjbpm:"Énergie jamais déduite du BPM (CHG-03)"};
+function flag(k){return !S.flags||S.flags[k]!==false;}
 function notify(txt,goTo){S.notifs.push({id:Date.now(),txt,go:goTo,seen:false,date:Date.now()});if(S.notifs.length>40)S.notifs.shift();save();renderTop();}
 
 /* ===================== NAVIGATION ===================== */
@@ -654,7 +681,8 @@ function importDbFile(){const i=$("#fileIn");i.accept="";i.onchange=async()=>{co
   H.serato={getFileHandle:async()=>({getFile:async()=>new File([buf],"database V2")})};PERM.serato="granted";exitDemoState();await loadSerato(true);H.serato=null;PERM.serato="none";render();};i.click();}
 
 /* ===================== BIBLIOTHÈQUE ===================== */
-const RULES=[["Amapiano 110-118",x=>x.sg==="Amapiano"&&x.bpm>=110&&x.bpm<=118],["Afrobeats warm-up",x=>x.sg==="Afrobeats"&&(x.e?x.e<=6:x.bpm<108)],["Afro peak time",x=>x.g==="Afro"&&(x.e?x.e>=8:x.bpm>=110)],
+// CHG-03 : l’énergie n’est jamais déduite du BPM (un son à 125 BPM peut être chill). Énergie inconnue = pas dans ces crates.
+const RULES=[["Amapiano 110-118",x=>x.sg==="Amapiano"&&x.bpm>=110&&x.bpm<=118],["Afrobeats warm-up",x=>x.sg==="Afrobeats"&&(x.e?x.e<=6:!flag("nrjbpm")&&x.bpm<108)],["Afro peak time",x=>x.g==="Afro"&&(x.e?x.e>=8:!flag("nrjbpm")&&x.bpm>=110)],
  ["Rap FR",x=>x.sg==="Rap FR"],["Rap US",x=>x.sg==="Rap US"||x.sg==="Trap"],["Drill",x=>x.sg==="Drill"],["R&B",x=>x.g==="R&B"],["Dancehall · Shatta",x=>x.sg==="Dancehall"||x.sg==="Shatta"],["Kompa · Zouk",x=>x.sg==="Kompa"||x.sg==="Zouk"],
  ["Throwback 90s",x=>x.era==="90s"],["Throwback 2000s",x=>x.era==="2000s"],["Hits open format",x=>x.g==="Open format"],["Nouveautés (30 jours)",x=>x.added&&(Date.now()/1000-x.added)<30*86400]];
 function libRows(){const q=norm(S.libQ).trim();
@@ -751,8 +779,40 @@ function compat(cur,c,full=true){
     ruleEffects().forEach(e=>{if(e.f(c)){s+=e.sgn*.08;why.push(["learn",`Règle : ${e.sgn>0?"plus":"moins"} ${de(e.l)}`]);}});
     if(S.dir!=="any"&&cur.e&&c.e){const d=c.e-cur.e;if(S.dir==="up"){s+=d>0?.07:d<0?-.1:0;if(d>0)why.push(["info","Monte l’énergie"]);}if(S.dir==="keep"){s+=Math.abs(d)<=1?.06:-.06;if(Math.abs(d)<=1)why.push(["info","Garde l’énergie"]);}if(S.dir==="down"){s+=d<0?.07:d>0?-.1:0;if(d<0)why.push(["info","Fait redescendre"]);}}}
   return {c,s:Math.max(0,Math.min(1,s)),why};}
+/* ---------- CHG-01 : suggestions pertinentes, variées, sans répétition ----------
+   Mémoire de SESSION (non sauvegardée, vidée à la fermeture) : sons montrés, refusés, mis en pause.
+   - refusé (✕)                         → plus proposé pendant la durée de session (réglable)
+   - montré dans 3 situations sans être choisi → mis en pause pendant la même durée
+   - diversité : pas deux fois le même artiste dans une liste, malus si l’artiste est déjà dans le set
+   - s’il ne reste pas assez de sons pertinents, on le dit au lieu de recycler en silence */
+const SESS={shown:{},dismissed:{},cool:{},log:[]};
+const MIN_PERTINENT=.35,COOL_AFTER=3;
+const sessTTL=()=>((S.reco&&S.reco.ttl)||30)*60e3;
+const akey=a=>norm(a).trim().split(" ").slice(0,2).join(" ");
+function slog(id,t,reason){SESS.log.push({at:Date.now(),id,t,reason});if(SESS.log.length>300)SESS.log.shift();}
+function sessExcluded(id){const now=Date.now(),d=SESS.dismissed[id],c=SESS.cool[id];
+  if(d&&now-d.at<sessTTL())return "refusé par toi";if(c&&now-c.at<sessTTL())return c.why;return null;}
+function markShown(list,ctx,idOf,titleOf){list.forEach(o=>{const id=idOf(o);const sh=SESS.shown[id]=SESS.shown[id]||new Set();
+  if(sh.has(ctx))return;sh.add(ctx);if(sh.size>=COOL_AFTER&&!SESS.cool[id]){SESS.cool[id]={at:Date.now(),why:`proposé ${COOL_AFTER} fois sans être choisi`};slog(id,titleOf(o),SESS.cool[id].why);}});}
+function dismissSugg(id,title){SESS.dismissed[id]={at:Date.now()};slog(id,title,"refusé par toi");
+  pushUndo("refus de la suggestion",()=>{delete SESS.dismissed[id];});toast(`« ${esc(title)} » écarté pour cette session`,true,false,"refus");softRender();}
+function otherIdeas(ids){ids.forEach(([id,t])=>{SESS.cool[id]={at:Date.now(),why:"« autres propositions » demandé"};slog(id,t,"autres propositions");});softRender();}
+function resetExclusions(silent){const n=Object.keys(SESS.dismissed).length+Object.keys(SESS.cool).length;SESS.dismissed={};SESS.cool={};SESS.shown={};
+  if(!silent){toast(n?`${pl(n,"son")} remis dans les propositions`:"Rien à remettre");softRender();}}
+const excludedCount=()=>Object.keys(SESS.dismissed).filter(k=>sessExcluded(k)).length+Object.keys(SESS.cool).filter(k=>sessExcluded(k)).length;
 function suggestions(){const cur=T(S.cur);if(!cur)return [];
-  return visible().filter(x=>x.n!==cur.n&&!S.set.ids.includes(x.n)&&!x.missing&&!(x.dupOf&&S.set.ids.includes(x.dupOf))).filter(x=>!S.sameGenre||x.g===cur.g).filter(x=>!S.keyF||x.k===S.keyF).map(x=>compat(cur,x)).sort((a,b)=>b.s-a.s).slice(0,5);}
+  const inSet=new Set(S.set.ids);
+  const base=visible().filter(x=>x.n!==cur.n&&!inSet.has(x.n)&&!x.missing&&!(x.dupOf&&inSet.has(x.dupOf))).filter(x=>!S.sameGenre||x.g===cur.g).filter(x=>!S.keyF||x.k===S.keyF);
+  if(!flag("reco2"))return base.map(x=>compat(cur,x)).sort((a,b)=>b.s-a.s).slice(0,5);
+  const setArtists=new Set(S.set.ids.map(T).filter(Boolean).map(t=>akey(t.a)));
+  const pool=[];for(const x of base){if(sessExcluded("t"+x.n))continue;const r=compat(cur,x);
+    if(setArtists.has(akey(x.a))){r.s-=.1;r.why.push(["warn","Artiste déjà dans ton set"]);}pool.push(r);}
+  pool.sort((a,b)=>b.s-a.s);const out=[];
+  while(out.length<5&&pool.length){let bi=0,bv=-9;
+    for(let i=0;i<Math.min(pool.length,60);i++){const p=pool[i];let v=p.s;if(out.some(o=>akey(o.c.a)===akey(p.c.a)))v-=.3;v-=.04*out.filter(o=>o.c.sg===p.c.sg).length;if(v>bv){bv=v;bi=i;}}
+    const pick=pool.splice(bi,1)[0];if(pick.s<MIN_PERTINENT)break;out.push(pick);}
+  markShown(out,cur.n+"|"+S.set.ids.join(","),o=>"t"+o.c.n,o=>o.c.t);
+  return out;}
 const scol=s=>s>=.75?"var(--green)":s>=.5?"var(--orange)":"var(--red)";
 const verdict=s=>s>=.85?["Parfait","ok"]:s>=.7?["Très bien","ok"]:s>=.5?["Possible","warn"]:["Risqué","bad"];
 const ALLKEYS=[];for(let n=1;n<=12;n++)for(const L of ["A","B"])ALLKEYS.push(n+L);
@@ -761,14 +821,17 @@ function onlinePool(){const seen=new Set(),out=[];
   for(const x of [...S.trends.items,...(S.disc.items||[]),...Object.values(S.found||{}),...(S.search.items||[])]){if(!x||seen.has(x.dz))continue;seen.add(x.dz);const c=S.trendCache[x.dz];if(c&&!libMatch(x))out.push({...x,bpm:c.bpm,k:c.k,e:c.e,kSrc:"est"});}
   return out;}
 function discoverSugg(){const cur=T(S.cur);if(!cur)return [];
-  return onlinePool().map(x=>compat(cur,x,false)).filter(r=>r.s>=.7).sort((a,b)=>b.s-a.s).slice(0,3);}
+  let l=onlinePool();if(flag("reco2"))l=l.filter(x=>!sessExcluded("dz"+x.dz));
+  const out=l.map(x=>compat(cur,x,false)).filter(r=>r.s>=.7).sort((a,b)=>b.s-a.s).slice(0,3);
+  if(flag("reco2"))markShown(out,cur.n+"|"+S.set.ids.join(","),o=>"dz"+o.c.dz,o=>o.c.t);return out;}
+const jsq=s=>esc(String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'"));
 function sugRow({c,s,why}){const [w,cl]=verdict(s);const main=[why[0][1],why[1][1],...why.filter(x=>x[0]==="learn").map(x=>x[1])].slice(0,3).join(" · ");const open=S.openWhy===c.n;
   return `<div class="sg"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}
-    <div class="sgm" onclick="S.openWhy=${open?"null":c.n};softRender()"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span>${c.wish?' <span class="tag info" data-tip="Dans ta musique, fichier à récupérer">à récupérer</span>':""}<div class="hint">${esc(main)} · <u>${open?"moins":"pourquoi ?"}</u></div>${open?`<div class="why">${why.map(([t,l])=>`<span class="tag ${t}">${esc(l)}</span>`).join("")}</div>`:""}</div>
-    <button class="play" onclick="playTrack(${c.n})" aria-label="Écouter">${svg(isPlaying(c)?"pause":"play",12)}</button><button class="btn sm add" onclick="addSet(${c.n})" aria-label="Ajouter au set">${svg("plus",15)}</button></div>`;}
+    <div class="sgm" onclick="S.openWhy=${open?"null":c.n};softRender()"><div class="sgt"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span></div>${c.wish?'<span class="tag info">à récupérer</span> ':""}<div class="hint sgw">${esc(main)} · <u>${open?"moins":"pourquoi ?"}</u></div>${open?`<div class="why">${why.map(([t,l])=>`<span class="tag ${t}">${esc(l)}</span>`).join("")}</div>`:""}</div>
+    <button class="play" onclick="playTrack(${c.n})" aria-label="Écouter">${svg(isPlaying(c)?"pause":"play",12)}</button>${flag("reco2")?`<button class="mi" onclick="dismissSugg('t${c.n}','${jsq(c.t)}')" aria-label="Pas pour ce set" title="Pas pour ce set">${svg("x",14)}</button>`:""}<button class="btn sm add" onclick="addSet(${c.n})" aria-label="Ajouter au set">${svg("plus",15)}</button></div>`;}
 function discRow({c,s}){const [w,cl]=verdict(s);const inL=inWish(c);const on=PL&&PL.u==="dz"+c.dz;
-  return `<div class="sg disc"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}<div class="sgm"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span><div class="hint">${Math.round(c.bpm)} BPM · ${c.k} · ${c.peu?"pépite peu connue":"en tendance"}</div></div>
-    <button class="play ${on?"on":""}" onclick="playDz(${c.dz})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button><button class="btn sm ${inL?"ghost":"violet"}" onclick="addIdea(${c.dz})" ${inL?"disabled":""}>${inL?"✓ Ajouté":"+ Ma musique"}</button></div>`;}
+  return `<div class="sg sgd"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}<div class="sgm"><div class="sgt"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span></div><div class="hint sgw">${Math.round(c.bpm)} BPM · ${c.k} · ${c.peu?"pépite peu connue":"en tendance"}</div></div>
+    <button class="play ${on?"on":""}" onclick="playDz(${c.dz})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>${flag("reco2")&&!inL?`<button class="mi" onclick="dismissSugg('dz${c.dz}','${jsq(c.t)}')" aria-label="Pas pour ce set" title="Pas pour ce set">${svg("x",14)}</button>`:""}<button class="btn sm ${inL?"ghost":"violet"}" onclick="addIdea(${c.dz})" ${inL?"disabled":""}>${inL?"✓ Ajouté":"+ Musique"}</button></div>`;}
 VIEWS.next=()=>{
   if(!S.tracks.length||!visible().length)return welcome();
   if(!T(S.cur)||T(S.cur).hidden){S.cur=visible()[0].n;if(!S.set.ids.length)S.set.ids=[S.cur];}
@@ -783,7 +846,9 @@ VIEWS.next=()=>{
     <div class="row between"><h3>Enchaîne avec</h3><button class="chip ${opts?"on":""}" onclick="S.showOpts=!S.showOpts;softRender()">Options${opts?" ●":""}</button></div>
     ${S.showOpts?`<div class="card mt2" style="padding:12px"><div class="row"><span class="hint">Énergie</span><div class="seg">${[["any","Peu importe"],["up","Monter"],["keep","Garder"],["down","Descendre"]].map(([v,l])=>`<button class="${S.dir===v?"on":""}" onclick="S.dir='${v}';save();render()">${l}</button>`).join("")}</div></div>
       <div class="row mt2"><button class="chip ${S.sameGenre?"on":""}" onclick="S.sameGenre=!S.sameGenre;render()">Même genre seulement</button>${S.keyF?`<button class="chip on" onclick="S.keyF=null;render()">Tonalité ${S.keyF} ✕</button>`:""}${rules.map(r=>`<span class="tag learn">Retenu : ${r.sgn>0?"plus":"moins"} ${de(r.l)}</span>`).join("")}</div></div>`:""}
-    ${sg.length?sg.map(sugRow).join(""):`<div class="empty">Aucun son ne correspond. Enlève une option.</div>`}
+    ${sg.length?sg.map(sugRow).join(""):""}
+    ${flag("reco2")&&sg.length<5?`<div class="card mt2" style="padding:12px"><b>${sg.length?"Plus d’autres propositions pertinentes":"Aucune proposition pertinente"}</b><p class="hint mt2">${excludedCount()?`${pl(excludedCount(),"son")} écarté${excludedCount()>1?"s":""} pendant cette session (refusés ou déjà proposés souvent).`:"Ta musique n’a pas d’autre son qui s’enchaîne bien ici."} ${S.dir!=="any"||S.sameGenre||S.keyF?"Tu peux aussi enlever une option.":""}</p>${excludedCount()?`<button class="btn sm ghost mt2" onclick="resetExclusions()">Remettre les sons écartés</button>`:""}</div>`:!sg.length?`<div class="empty">Aucun son ne correspond. Enlève une option.</div>`:""}
+    ${flag("reco2")&&sg.length?`<button class="chip mt2" onclick='otherIdeas(${JSON.stringify(sg.map(r=>["t"+r.c.n,r.c.t])).replace(/'/g,"&#39;")})'>↻ Autres propositions</button>`:""}
     ${ds.length?`<h3 class="mt">À découvrir <span class="hint" style="font-weight:400">· pas encore dans ta musique</span></h3>${ds.map(discRow).join("")}`:""}
   </div>
   <div class="card"><div class="row between"><h3>Roue des tonalités</h3><span class="tag ${cov.n===24?"ok":"warn"}" data-tip="Tonalités où tu as au moins un son">${cov.n}/24</span></div>${wheel(cur.k,cov)}
@@ -823,7 +888,7 @@ function setPanel(){const items=S.set.ids.map(T).filter(Boolean);const W=280,H2=
     ${items.some(x=>x.wish)?`<p class="mt2 clk" style="color:var(--orange);font-size:13px" onclick="S.trTab='liste';go('trend')">${pl(items.filter(x=>x.wish).length,"son")} du set à récupérer avant la soirée →</p>`:""}
     ${items.length>1&&items.some(x=>x.e)?`<svg viewBox="0 0 ${W} ${H2}" style="width:100%;max-width:340px;height:${H2}px"><polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--orange)" stroke-width="2"/>${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="var(--orange)" stroke="var(--panel)" stroke-width="2" data-tip="${i+1}. ${esc(items[i].t)} · énergie ${items[i].e||"?"}"/>`).join("")}</svg>`:""}
     <div>${items.map((x,i)=>{let tr="";if(i>0){const c=compat(items[i-1],x,false);tr=`<div class="trn"><span class="tag ${c.s>=.75?"ok":c.s>=.5?"warn":"bad"}" data-tip="${esc(c.why.map(w=>w[1]).join(" · "))}">${c.s>=.5?"✓":"⚠"} transition ${Math.round(c.s*100)}</span></div>`;}
-      return tr+`<div class="setrow"><span class="n">${i+1}</span>${cover(x)}<div style="flex:1;min-width:0"><b>${esc(x.t)}</b> <span class="hint">· ${esc(x.a)}</span></div><span class="hint hm">${x.bpm?Math.round(x.bpm):"?"}</span>${keyTag(x.k,x.kSrc==="est")}
+      return tr+`<div class="setrow${S.flash===x.n?" flash":""}"><span class="n">${i+1}</span>${cover(x)}<div style="flex:1;min-width:0"><b>${esc(x.t)}</b> <span class="hint">· ${esc(x.a)}</span></div><span class="hint hm">${x.bpm?Math.round(x.bpm):"?"}</span>${keyTag(x.k,x.kSrc==="est")}
       <button class="mi" onclick="mv(${i},-1)">${svg("up",14)}</button><button class="mi" onclick="mv(${i},1)">${svg("down",14)}</button><button class="mi" onclick="rmSet(${i})">${svg("x",14)}</button></div>`}).join("")}</div></div>`;}
 function pickDrop(){const q=norm($("#pickQ").value).trim();const r=visible().filter(x=>!q||norm(x.t+" "+x.a).includes(q)).slice(0,10);
   $("#pickD").innerHTML=`<div class="drop">${r.map(x=>`<div onmousedown="startFrom(${x.n})">${cover(x)}<span style="flex:1;min-width:0"><b>${esc(x.t)}</b><br><span class="hint">${esc(x.a)}</span></span><span class="hint">${x.bpm?Math.round(x.bpm):"?"}</span>${keyTag(x.k)}</div>`).join("")||'<div class="hint">Aucun résultat</div>'}</div>`;
@@ -831,7 +896,10 @@ function pickDrop(){const q=norm($("#pickQ").value).trim();const r=visible().fil
 function snapSet(){return [S.cur,JSON.parse(JSON.stringify(S.set))];}
 function restoreSet(o){[S.cur,S.set]=o;}
 function startFrom(n){const o=snapSet();S.cur=n;S.set.ids=[n];S.keyF=null;pushUndo("changement du son de départ",()=>restoreSet(o));save();go("next");}
-function addSet(n){const o=snapSet();S.set.ids.push(n);S.cur=n;S.keyF=null;pushUndo("ajout au set",()=>restoreSet(o));save();render();toast(`« ${esc(T(n).t)} » ajouté. Suggestions recalculées.`,true);}
+function addSet(n){if(S.set.ids.includes(n))return;   // un double clic n’ajoute pas deux fois
+  const o=snapSet();S.set.ids.push(n);S.cur=n;S.keyF=null;S.flash=n;pushUndo("ajout au set",()=>restoreSet(o));save();softRender();
+  if(flag("toast2"))toast(`« ${esc(T(n).t)} » ajouté au set`,true,false,"ajout");else toast(`« ${esc(T(n).t)} » ajouté. Suggestions recalculées.`,true);
+  setTimeout(()=>{if(S.flash===n)S.flash=null;},1200);}
 function mv(i,d){const j=i+d;if(j<0||j>=S.set.ids.length)return;const a=S.set.ids;[a[i],a[j]]=[a[j],a[i]];save();render();}
 function rmSet(i){const o=snapSet();S.set.ids.splice(i,1);if(!S.set.ids.length)S.set.ids=[o[0]];S.cur=S.set.ids[S.set.ids.length-1];pushUndo("retrait du set",()=>restoreSet(o));save();render();}
 function clearSet(){const o=snapSet();S.set.ids=[S.cur];pushUndo("vidage du set",()=>restoreSet(o));save();render();toast("Set vidé.",true);}
@@ -1034,7 +1102,7 @@ function addIdea(dz){const x=findDz(dz);if(!x)return;
   // la découverte se renouvelle : le son ajouté laisse sa place à un nouveau
   const di=(S.disc.items||[]).findIndex(y=>y.dz===dz);let repl=null;if(di>=0){repl=pickDisc();S.disc.items.splice(di,1,...(repl?[repl]:[]));}
   pushUndo("ajout à ta musique",()=>{removeFromLib(t);if(di>=0){S.disc.items=S.disc.items.filter(y=>y!==repl);S.disc.items.splice(di,0,x);}});
-  save(true);toast(`« ${esc(x.t)} » est dans ta musique, à récupérer.`,true);liveRefresh();if(window.findRefresh&&$(".ov"))findRefresh();}
+  save(true);toast(`« ${esc(x.t)} » ajouté à ta musique`,true,false,"lib");liveRefresh();if(window.findRefresh&&$(".ov"))findRefresh();}
 function addAll(kind){const on=new Set(STYLES.filter(([k])=>S.styles[k]).map(x=>x[1]));
   const list=kind==="disc"?(S.disc.items||[]).filter(x=>on.has(x.style)):kind==="search"?(S.search.items||[]):S.trends.items;
   const added=[];for(const x of list){const {t,isNew}=addToLib(x,kind==="disc"?"decouverte":kind==="moment"?"tendance":"moi");if(isNew)added.push(t);}
@@ -1270,7 +1338,13 @@ VIEWS.settings=()=>{const st=k=>H[k]?(PERM[k]==="granted"?'<span class="tag ok">
   <div class="card"><h3>Toi</h3><div class="row mt2"><span class="hint" style="width:70px">Prénom</span><input class="f" value="${esc(S.name)}" placeholder="Ton prénom" onchange="S.name=this.value.trim();save()"></div>
     <p class="hint mt">Raccourcis : Ctrl ou Cmd + K pour chercher · Ctrl ou Cmd + Z pour annuler · Espace pour écouter.</p>
     <div class="row mt">${S.demo?`<button class="btn sm orange" onclick="leaveDemo()">Quitter le mode démo</button>`:`<button class="btn ghost sm" onclick="enterDemo();render()">Mode démo</button>`}<button class="btn ghost sm" style="color:var(--red)" onclick="resetAll()">Tout effacer</button></div>
-    <p class="hint mt">SetMate ${VERSION}</p></div></div>`;};
+    <p class="hint mt">SetMate ${VERSION}</p></div>
+  <div class="card"><h3>Correctifs du test terrain</h3><p class="hint mt2">Chaque correctif peut être désactivé pour revenir à l’ancien comportement.</p>
+    ${Object.entries(FLAG_INFO).map(([k,l])=>`<label class="ck" style="cursor:pointer"><input type="checkbox" ${flag(k)?"checked":""} onchange="S.flags.${k}=this.checked;save();render()" style="accent-color:var(--green);width:16px;height:16px"><span>${l}</span></label>`).join("")}
+    <div class="row mt2"><span class="hint">Un son refusé ou trop proposé revient après</span><select class="f" onchange="S.reco.ttl=+this.value;save()">${[[15,"15 min"],[30,"30 min"],[60,"1 h"],[240,"4 h"],[1440,"24 h"]].map(([v,l])=>`<option value="${v}" ${(S.reco.ttl||30)===v?"selected":""}>${l}</option>`).join("")}</select></div>
+    <div class="row mt2"><button class="btn ghost sm" onclick="resetExclusions()">Remettre les sons écartés (${excludedCount()})</button><button class="btn ghost sm" onclick="showSuggLog()">Journal des suggestions</button></div></div></div>`;};
+function showSuggLog(){const rows=SESS.log.slice(-60).reverse();
+  modal(`<h2>Journal des suggestions</h2><p class="hint">Pourquoi un son n’est plus proposé (cette session seulement, rien n’est envoyé).</p><div class="mt" style="max-height:50vh;overflow:auto">${rows.length?rows.map(r=>`<div class="mini"><span class="hint" style="width:44px">${new Date(r.at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</span><div style="flex:1;min-width:0"><b>${esc(r.t)}</b><div class="hint">${esc(r.reason)}</div></div></div>`).join(""):'<p class="hint">Rien pour l’instant.</p>'}</div><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">OK</button></div>`);}
 function exportData(){const st={...S,undo:undefined};download(new Blob([JSON.stringify({setmate:VERSION,date:Date.now(),state:st})],{type:"application/json"}),`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`);toast("Sauvegarde téléchargée.");}
 function importData(){const i=$("#fileIn");i.accept=".json";i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!d.setmate)throw new Error("fichier non reconnu");const keep=S.undo;Object.assign(S,d.state);S.undo=keep;reindex();save(true);render();toast("Données restaurées.");}catch(e){toast("Restauration impossible : "+esc(e.message),false,true);}i.value="";};i.click();}
 function resetAll(){modal(`<h2>Tout effacer ?</h2><p class="hint mt2">Efface les données SetMate de ce navigateur (bibliothèque lue, soirées, débriefs, préférences). Tes fichiers et ta bibliothèque Serato ne sont pas touchés.</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn red" onclick="doReset()">Effacer</button></div>`);}
