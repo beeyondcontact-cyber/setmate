@@ -278,7 +278,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.5";
+const VERSION="1.6";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -311,7 +311,7 @@ function reindex(){byN=new Map();byPath=new Map();S.tracks.forEach(t=>{byN.set(t
 const T=n=>byN.get(n);
 let saveT=null,tracksDirty=false;
 function save(tracksToo=false){if(tracksToo)tracksDirty=true;clearTimeout(saveT);saveT=setTimeout(async()=>{
-  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge","pls","own","lsTab"])st[k]=S[k];
+  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge","pls","own","lsTab","seenV"])st[k]=S[k];
   await DB.set("state",st);if(tracksDirty){await DB.set("tracks",S.tracks);tracksDirty=false;}},400);}
 async function load(){
   await DB.open();
@@ -640,7 +640,7 @@ VIEWS.home=()=>{
   const tile=(ic,col,title,sub,on)=>`<button class="tile" onclick="${on}"><span class="ti" style="background:${col}22;color:${col}">${svg(ic,22)}</span><span class="tx"><b>${title}</b><span>${sub}</span></span></button>`;
   let gig;
   if(up){const c=gigCheck(up),done=c.filter(x=>x[0]).length,dd=daysUntil(up.date);
-    gig=`<div class="card hi mt"><div class="row between" style="flex-wrap:nowrap"><div style="min-width:0"><span class="tag info">${dd===0?"Ce soir":dd===1?"Demain":"Dans "+dd+" jours"}</span><div class="big mt2">${esc(up.theme||up.type)}</div><div class="hint">${fmtDate(up.date)} · ${esc(up.lieu)}</div></div><div class="ring" style="--p:${done/c.length}">${done}/${c.length}</div></div>
+    gig=`<div class="card hi mt"><div class="row between" style="flex-wrap:nowrap"><div style="min-width:0"><span class="tag info">${esc(up.type)} · ${dd===0?"ce soir":dd===1?"demain":"dans "+dd+" jours"}</span><div class="big mt2">${esc(up.theme||up.type)}</div><div class="hint">${fmtDate(up.date)} · ${esc(up.lieu)}</div></div><div class="ring" style="--p:${done/c.length}">${done}/${c.length}</div></div>
       <div class="mt">${c.map(([d,l,to])=>`<div class="ck ${d?"done":""}" onclick="${to}"><div class="bx">${d?svg("check",13,'style="color:#04210f"'):""}</div><span class="l">${l}</span><span class="go">${d?"":"→"}</span></div>`).join("")}</div></div>`;}
   else gig=`<div class="card mt"><div class="row between"><div><h3>Pas de soirée prévue</h3><p class="hint">Ajoute ta prochaine date : je te fais ta checklist.</p></div><button class="btn sm" onclick="go('gigs');newGig()">${svg("plus",14)}Ajouter</button></div></div>`;
   const learnedN=Object.keys(S.L).length+Object.keys(S.P).length+S.rules.length;
@@ -888,7 +888,7 @@ function setPanel(){const items=S.set.ids.map(T).filter(Boolean);const W=280,H2=
   const gig=S.gigs.find(g=>g.id===S.set.gig);
   return `<div class="card mt"><div class="row between"><div class="row" style="gap:8px"><h3>Set en cours</h3><input class="f" value="${esc(S.set.name)}" onchange="S.set.name=this.value;save()" style="padding:4px 8px;font-size:12px;width:200px">
       <select class="f" style="padding:4px 8px;font-size:12px" onchange="S.set.gig=+this.value||null;save();render()"><option value="">Lier à une soirée…</option>${S.gigs.map(g=>`<option value="${g.id}" ${g.id===S.set.gig?"selected":""}>${fmtDate(g.date)} · ${esc(g.lieu)}</option>`).join("")}</select></div>
-    <div class="row" style="gap:8px"><button class="btn ghost sm" onclick="clearSet()">Vider</button><button class="btn ghost sm" onclick="exportM3U()">${svg("dl",13)}Playlist M3U</button><button class="btn sm" onclick="exportSetCrate()">Crate Serato</button><button class="btn orange sm" onclick="exportUsb()">${svg("usb",14)}Copier sur clé USB</button></div></div>
+    <div class="row" style="gap:8px"><button class="btn ghost sm" onclick="clearSet()">Vider</button><button class="btn ghost sm" onclick="playSet()">${svg("play",13)}Écouter le set</button><button class="btn ghost sm" onclick="saveList('set')">${svg("plplus",13)}Playlist</button><button class="btn ghost sm" onclick="shareKind('set')">${svg("share",13)}Partager</button><button class="btn ghost sm" onclick="exportM3U()">${svg("dl",13)}Playlist M3U</button><button class="btn sm" onclick="exportSetCrate()">Crate Serato</button><button class="btn orange sm" onclick="exportUsb()">${svg("usb",14)}Copier sur clé USB</button></div></div>
     <div class="row mt2" style="gap:18px"><span class="hint"><b style="color:var(--txt)">${items.length}</b> sons · ≈ <b style="color:var(--txt)">${Math.round(items.length*3.4)} min</b>${items.some(x=>x.bpm)?` · BPM ${Math.round(Math.min(...items.filter(x=>x.bpm).map(x=>x.bpm)))} à ${Math.round(Math.max(...items.filter(x=>x.bpm).map(x=>x.bpm)))}`:""}${gig?` · pour ${esc(gig.lieu)} (${fmtDate(gig.date)})`:""}</span></div>
     ${items.some(x=>x.wish)?`<p class="mt2 clk" style="color:var(--orange);font-size:13px" onclick="S.trTab='liste';go('trend')">${pl(items.filter(x=>x.wish).length,"son")} du set à récupérer avant la soirée →</p>`:""}
     ${items.length>1&&items.some(x=>x.e)?`<svg viewBox="0 0 ${W} ${H2}" style="width:100%;max-width:340px;height:${H2}px"><polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--orange)" stroke-width="2"/>${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="var(--orange)" stroke="var(--panel)" stroke-width="2" data-tip="${i+1}. ${esc(items[i].t)} · énergie ${items[i].e||"?"}"/>`).join("")}</svg>`:""}
@@ -1312,22 +1312,22 @@ async function showArrival(){const a=arrivals.shift();if(!a)return;const {f,tg,w
 let REC=null,recOn=false,recT=null,recS=0,finalTxt="";
 VIEWS.debrief=()=>{const opts=pastGigs().filter(g=>g.type!=="Live / contenu");
   if(!opts.length)return `<h1>Débrief vocal</h1><p class="sub">Raconte ta soirée, je retiens ce qui marche.</p><div class="card"><div class="empty">${svg("gigs",40)}<div>Ajoute d’abord une soirée passée (Soirées › Nouvelle soirée, ou importe un historique Serato).</div><button class="btn mt" onclick="go('gigs')">Aller aux soirées</button></div></div>`;
-  if(!opts.some(g=>g.id===S.dGig))S.dGig=(pendingDeb()[0]||opts[0]).id;const g=S.gigs.find(x=>x.id===S.dGig);const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!opts.some(g=>g.id===S.dGig))S.dGig=(pendingDeb()[0]||opts[0]).id;const g=S.gigs.find(x=>x.id===S.dGig);const SR=srOK();
   return `<h1>Débrief vocal</h1><p class="sub">Appuie, raconte ta soirée comme à une copine, puis analyse. Je relie ce que tu dis aux sons joués, tu valides chaque point.</p>
   <div class="grid g2"><div class="card" style="text-align:center">
     <select class="f" onchange="S.dGig=+this.value;S.dPts=null;render()" style="width:100%">${opts.map(o=>`<option value="${o.id}" ${o.id===S.dGig?"selected":""}>${fmtDate(o.date)} · ${esc(o.lieu)}${o.deb?" (déjà fait)":""}</option>`).join("")}</select>
     <p class="hint mt2">${g.played.length?pl(g.played.length,"son")+" joué"+(g.played.length>1?"s":"")+" ce soir-là":"Pas de liste de sons : je chercherai dans toute ta bibliothèque."}</p>
     <div class="guide"><span>Ce qui a marché ?</span><span>Ce qui a flop ?</span><span>Les enchaînements ?</span><span>Les demandes ?</span></div>
     <button class="mic ${recOn?"rec":""}" onclick="micToggle()" aria-label="Enregistrer">${recOn?'<svg viewBox="0 0 24 24" fill="#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>'}</button>
-    <p id="micTxt" style="font-weight:600">${recOn?"Je t’écoute… appuie pour terminer":SR?"Appuie pour parler":"Micro non disponible dans ce navigateur : écris ton débrief"}</p>
+    <p id="micTxt" style="font-weight:600">${recOn?"Je t’écoute… appuie pour terminer":SR?"Appuie pour parler":(isIOS&&installed()?"Micro de l’appli indisponible sur iPhone : touche la zone de texte et dicte avec le micro du clavier":"Micro non disponible dans ce navigateur : écris ton débrief")}</p>
     <textarea class="f mt" id="dTxt" placeholder="Ta transcription apparaît ici. Tu peux aussi écrire ou corriger." oninput="S.dTxt=this.value;updAn()">${esc(S.dTxt||"")}</textarea>
     <div class="row mt2" style="justify-content:flex-end"><button class="btn" id="anB" onclick="runAnalyse()" ${(S.dTxt||"").trim().length>8?"":"disabled"}>Analyser</button></div>
     <p class="hint mt">La reconnaissance vocale passe par le service de ton navigateur. Le texte est analysé ici, sur ton ordinateur.</p></div>
   <div class="card"><div class="row between"><h3>Voici ce que j’ai compris</h3>${S.dPts?`<span class="hint">${pl(S.dPts.length,"point")}</span>`:""}</div><div id="pts">${ptsHtml()}</div>
     ${S.dPts&&S.dPts.length?`<button class="btn green block mt" onclick="applyDebrief()">${svg("check",15)}Appliquer les points cochés</button><p class="hint mt2" style="text-align:center">Tu pourras tout annuler.</p>`:""}</div></div>`;};
 function updAn(){const b=$("#anB");if(b)b.disabled=!((S.dTxt||"").trim().length>8);}
-function micToggle(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(recOn){REC&&REC.stop();return;}
-  if(!SR){toast("Micro non disponible ici : écris ton débrief dans la zone de texte.",false,true);return;}
+function micToggle(){const SR=srOK();if(recOn){REC&&REC.stop();return;}
+  if(!SR){toast("Micro indisponible ici : touche la zone de texte et dicte avec le micro du clavier.",false,true);return;}
   try{REC=new SR();REC.lang="fr-FR";REC.continuous=true;REC.interimResults=true;finalTxt=(S.dTxt||"").trim();if(finalTxt)finalTxt+=" ";
     REC.onresult=e=>{let it="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalTxt+=r[0].transcript.trim()+". ";else it+=r[0].transcript;}S.dTxt=finalTxt+it;const ta=$("#dTxt");if(ta)ta.value=S.dTxt;updAn();};
     REC.onerror=ev=>{if(ev.error==="not-allowed"||ev.error==="service-not-allowed")toast("Micro refusé. Autorise-le (icône à gauche de l’adresse) ou écris ton débrief.",false,true);else if(ev.error!=="no-speech"&&ev.error!=="aborted")toast("Reconnaissance vocale indisponible ("+esc(ev.error)+"). Écris ton débrief.",false,true);};
@@ -1416,14 +1416,14 @@ const isPlaying=x=>PL&&PL.u==="t"+x.n;
 async function playTrack(n,force=false){const x=T(n);const u="t"+n;if(!force&&PL&&PL.u===u)return stopPlay();if(!force)Q.items=[];stopPlay();PL={u,x,src:"…"};renderPlayer();refreshPlay();
   const f=await fileOf(x);if(PL?.u!==u)return;
   if(f){AU.src=URL.createObjectURL(f);PL.src="ton fichier";}
-  else if(x.dz){try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";}catch(e){toast("Extrait indisponible.",false,true);return stopPlay();}}
+  else if(x.dz){try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";}catch(e){previewFail();return stopPlay();}}
   else{const p=await dzSearch(x);if(PL?.u!==u)return;if(!p){toast("Pas d’extrait disponible. Connecte ton dossier Musique pour écouter tes fichiers.",false,true);return stopPlay();}AU.src=p.preview;PL.src="extrait 30 s · Deezer";if(p.cover)x.cover=x.cover||p.cover;}
   try{await AU.play();}catch(e){toast("Lecture impossible : "+esc(e.message),false,true);return stopPlay();}startProg();renderPlayer();refreshPlay();}
 async function dzSearch(x){const k=x.a+"|"+x.t;if(k in DZC)return DZC[k];try{const art=String(x.a).split(/,|&| feat/i)[0].trim(),tit=String(x.t).replace(/\(.*\)/,"").trim();
   const d=await jsonp("https://api.deezer.com/search?q="+encodeURIComponent(art+" "+tit)+"&limit=5");const a0=norm(art).trim().split(" ")[0];
   const r=(d.data||[]).find(it=>it.preview&&norm(it.artist?.name).includes(a0)&&norm(it.title).includes(norm(tit).trim().split(" ")[0]));DZC[k]=r?{preview:r.preview,cover:r.album?.cover_medium}:null;}catch(e){DZC[k]=null;}return DZC[k];}
 async function playDz(dz,force=false,meta=null){const u="dz"+dz;if(!force&&PL&&PL.u===u)return stopPlay();if(!force)Q.items=[];stopPlay();const it=meta||findDz(dz)||{t:"…",a:""};PL={u,x:{dz,t:it.t,a:it.a,cover:it.cover,k:S.trendCache[dz]?.k,bpm:S.trendCache[dz]?.bpm},src:"…"};renderPlayer();refreshPlay();
-  try{const d=await jsonp(`https://api.deezer.com/track/${dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";await AU.play();startProg();}catch(e){toast("Extrait indisponible.",false,true);return stopPlay();}renderPlayer();refreshPlay();}
+  try{const d=await jsonp(`https://api.deezer.com/track/${dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";await AU.play();startProg();}catch(e){previewFail();return stopPlay();}renderPlayer();refreshPlay();}
 function startProg(){clearInterval(progT);progT=setInterval(()=>{const b=$("#pbar");if(b&&AU.duration)b.style.width=(AU.currentTime/AU.duration*100)+"%";},250);}
 function stopPlay(){AU.pause();clearInterval(progT);if(AU.src.startsWith("blob:"))URL.revokeObjectURL(AU.src);PL=null;renderPlayer();refreshPlay();}
 function refreshPlay(){if($(".ov")){if(window.findRefresh)findRefresh();return;}if(S.screen==="lib")libTable();else if(["next","trend","listen"].includes(S.screen))softRender();}
@@ -1452,18 +1452,10 @@ async function qPlay(i){if(i<0||i>=Q.items.length)return stopPlay();const tok=++
   if(tok!==qTok)return;
   // un extrait indisponible ne bloque pas la file : on passe au suivant (3 essais au plus)
   if(!PL){if(++Q.fails<4&&Q.items.length>1)return qNext();}else Q.fails=0;}
-function qNext(auto=false){if(!Q.items.length)return stopPlay();if(auto&&Q.repeat==="one")return qPlay(Q.i);
-  let i=Q.i+1;
-  if(Q.shuffle&&Q.items.length>1){let left=Q.items.map((_,j)=>j).filter(j=>!Q.played.has(j));
-    if(!left.length){if(auto&&Q.repeat!=="all")return stopPlay();Q.played=new Set();left=Q.items.map((_,j)=>j).filter(j=>j!==Q.i);}
-    i=left[Math.floor(Math.random()*left.length)];}
-  else if(i>=Q.items.length){if(auto&&Q.repeat!=="all")return stopPlay();i=0;}
-  qPlay(i);}
 function qPrev(){if(AU.currentTime>3){AU.currentTime=0;return;}qPlay(Math.max(0,Q.i-1));}
 function qToggle(){if(!PL){if(Q.items.length)qPlay(Math.max(0,Q.i));return;}if(AU.paused)AU.play().catch(()=>{});else AU.pause();renderPlayer();}
 function qRepeat(){Q.repeat=Q.repeat==="off"?"all":Q.repeat==="all"?"one":"off";renderPlayer();toast(Q.repeat==="off"?"Répétition coupée.":Q.repeat==="all"?"Je répète toute la file.":"Je répète ce son.");}
 function seekBar(e,el){if(!AU.duration)return;const r=el.getBoundingClientRect();AU.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*AU.duration;}
-AU.onended=()=>inQueue()?qNext(true):stopPlay();
 AU.onplay=AU.onpause=()=>{if(PL)renderPlayer();else mediaSync();};
 
 /* ---------- Écran verrouillé et écouteurs (Media Session) ---------- */
@@ -1488,7 +1480,7 @@ function renderPlayer(){const p=$("#player");p.style.display=(!PL&&MOBILE)?"none
       :`<button class="play on" onclick="stopPlay()" aria-label="Arrêter">${svg("pause",12)}</button>`}
     <div class="pbar clk" onclick="seekBar(event,this)"><i id="pbar"></i></div>
     ${q?`<button class="mi hm ${Q.shuffle?"onx":""}" onclick="Q.shuffle=!Q.shuffle;renderPlayer()" aria-label="Aléatoire" data-tip="Aléatoire">${svg("shuf",15)}</button><button class="mi hm ${Q.repeat!=="off"?"onx":""}" onclick="qRepeat()" aria-label="Répéter" data-tip="Répéter">${svg("rep",15)}${Q.repeat==="one"?"<sup>1</sup>":""}</button>`:""}
-    <button class="mi ${isLiked(x)?"onx":""}" onclick="toggleLike()" aria-label="Coup de cœur" data-tip="Coup de cœur">${svg("heart",15)}</button>
+    <button class="mi" onclick="addToPlaylist(songOf(PL.x))" aria-label="Ajouter à une playlist" data-tip="Ajouter à une playlist">${svg("plplus",15)}</button><button class="mi ${isLiked(x)?"onx":""}" onclick="toggleLike()" aria-label="Coup de cœur" data-tip="Coup de cœur">${svg("heart",15)}</button>
     <button class="mi hm" onclick="startRadio()" aria-label="Radio" data-tip="Radio : des sons du même univers">${svg("radio",15)}</button>${keyTag(x.k)}`;}
 
 /* ---------- Fichiers du téléphone (hors connexion) ---------- */
@@ -1550,7 +1542,7 @@ function importPlaylist(){modal(`<h2>Importer une playlist</h2><p class="hint mt
   <div class="card mt" style="padding:12px"><b>1. Un lien Deezer</b><p class="hint">Dans Deezer : Partager, puis Copier le lien.</p><input class="f mt2" id="plUrl" placeholder="https://www.deezer.com/fr/playlist/…" style="width:100%" autocomplete="off"></div>
   <div class="card mt" style="padding:12px"><b>2. Une liste de sons</b><p class="hint">Un son par ligne : « Artiste - Titre ». Marche avec une liste copiée depuis Musique sur Mac, une note, un message…</p><textarea class="f mt2" id="plTxt" rows="5" style="width:100%" placeholder="Burna Boy - Last Last&#10;Tayc - N’y pense plus"></textarea></div>
   <div class="card mt" style="padding:12px"><b>3. Un fichier</b><p class="hint">Export de Musique (.txt), d’Exportify ou de TuneMyMusic (.csv), ou playlist .m3u / .m3u8.</p><button class="btn ghost sm mt2" onclick="plFromFile()">Choisir un fichier</button></div>
-  <details class="mt"><summary class="hint clk">Ma playlist est sur Apple Music ou Spotify</summary><p class="hint mt2"><b>Apple Music sur Mac</b> : ouvre la playlist, sélectionne tout (⌘ A), copie (⌘ C), colle dans la case 2.<br><b>Spotify</b> : exporte la playlist en .csv avec un outil d’export gratuit (Exportify par exemple), puis choisis le fichier en 3.<br>La connexion directe à ces comptes demande un accès développeur payant ou limité : prévue plus tard.</p></details>
+  <p class="hint mt">Ta playlist est ailleurs ?</p><div class="row mt2" style="gap:6px;flex-wrap:wrap"><button class="chip" onclick="helpModal('apple')">Apple Music</button><button class="chip" onclick="helpModal('spotify')">Spotify</button><button class="chip" onclick="helpModal('deezer')">Lien court Deezer</button></div>
   <input class="f mt" id="plName" placeholder="Nom de la playlist (facultatif)" style="width:100%" autocomplete="off">
   <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="plFromModal()">Importer</button></div>`);}
 function plFromModal(){const url=$("#plUrl").value.trim(),txt=$("#plTxt").value,name=$("#plName").value.trim();
@@ -1654,7 +1646,7 @@ function plDetail(p){const busy=plBusy&&plBusy.id===p.id,dzN=p.items.filter(x=>x
       <div class="card mt2" style="padding:4px 14px">${sim.map(x=>trRow(x,false).replace(/<\/div>\s*$/,`<button class="mi" onclick="plSimAdd('${p.id}',${x.dz})" aria-label="Ajouter à la playlist" data-tip="Dans cette playlist">→</button></div>`)).join("")}</div>`:""}
     <div class="card mt" style="padding:4px 14px">${rows||`<div class="empty">Playlist vide. Mets un son en coup de cœur (♥ dans le lecteur) pour la remplir.</div>`}</div>
     ${p.items.length>lim?`<button class="btn ghost block mt" onclick="S.plLimit=${lim+200};softRender()">Afficher plus (${p.items.length-lim} restants)</button>`:""}
-    <div class="row mt" style="gap:8px;flex-wrap:wrap"><span class="hint">Emporter la liste ailleurs :</span><button class="chip" onclick="plExport('${p.id}','copy')">Copier</button><button class="chip" onclick="plExport('${p.id}','txt')">Fichier .txt</button><button class="chip" onclick="plExport('${p.id}','csv')">Fichier .csv</button>
+    <div class="row mt" style="gap:8px;flex-wrap:wrap"><span class="hint">Emporter la liste ailleurs :</span><button class="chip" onclick="shareKind('pl:${p.id}')">Partager</button><button class="chip" onclick="plExport('${p.id}','copy')">Copier</button><button class="chip" onclick="plExport('${p.id}','txt')">Fichier .txt</button><button class="chip" onclick="plExport('${p.id}','csv')">Fichier .csv</button>
       <span class="tsp"></span><button class="chip" onclick="plRename('${p.id}')">Renommer</button><button class="chip" onclick="plDel('${p.id}')">Supprimer</button></div>
     ${dzN<p.items.length&&!busy&&p.items.some(x=>x.miss)?`<p class="hint mt2">Les sons « introuvables » n’ont pas d’équivalent clair sur Deezer : vérifie l’orthographe ou ajoute le fichier sur ce téléphone.</p>`:""}`;}
 function qLabel(it){if(it.n){const t=T(it.n);return t?{t:t.t,a:t.a,cover:t.cover}:it;}if(it.fid){const o=S.own.find(x=>x.fid===it.fid);return o||it;}return it;}
@@ -1668,12 +1660,206 @@ VIEWS.listen=()=>{const tab=S.lsTab||"pls",p=S.plOpen&&plGet(S.plOpen);
       <p class="hint mt2">MP3, M4A, AAC ou WAV, choisis dans l’app Fichiers. Ils restent dans SetMate, sur cet appareil. <span id="stoInfo"></span></p>
       <div class="card mt" style="padding:4px 14px">${own.length?own.map((o,i)=>{const on=PL&&PL.u==="f"+o.fid&&!AU.paused;return `<div class="trow">${cover(o)}<div class="tm clk" onclick="ownPlay(${i})"><b>${esc(o.t)}</b><div class="hint">${esc(o.a||"Artiste inconnu")} · ${Math.max(1,Math.round(o.size/1048576))} Mo</div></div>
         <button class="play ${on?"on":""}" onclick="${PL&&PL.u==="f"+o.fid&&inQueue()?"qToggle()":`ownPlay(${i})`}" aria-label="Écouter">${svg(on?"pause":"play",12)}</button><button class="mi" onclick="ownRm('${o.fid}')" aria-label="Retirer de ce téléphone" data-tip="Retirer">${svg("x",14)}</button></div>`;}).join(""):`<div class="empty">Aucun fichier pour l’instant. Ajoute tes sons pour les écouter partout, même en avion.</div>`}</div>`;}
-  if(tab==="q"){return head+(Q.items.length?`<div class="row between mt"><span class="hint">${esc(Q.label||"File d’écoute")}</span><span class="row" style="gap:6px"><button class="chip ${Q.shuffle?"on":""}" onclick="Q.shuffle=!Q.shuffle;softRender()">Aléatoire</button><button class="chip ${Q.repeat!=="off"?"on":""}" onclick="qRepeat();softRender()">Répéter${Q.repeat==="one"?" ce son":Q.repeat==="all"?" tout":""}</button><button class="chip" onclick="Q.items=[];Q.i=-1;stopPlay();softRender()">Vider</button></span></div>
+  if(tab==="q"){return head+(Q.items.length?`<div class="row between mt"><span class="hint">${esc(Q.label||"File d’écoute")}</span><span class="row" style="gap:6px"><button class="chip ${Q.shuffle?"on":""}" onclick="Q.shuffle=!Q.shuffle;softRender()">Aléatoire</button><button class="chip ${Q.repeat!=="off"?"on":""}" onclick="qRepeat();softRender()">Répéter${Q.repeat==="one"?" ce son":Q.repeat==="all"?" tout":""}</button><button class="chip" onclick="Q.items=[];Q.i=-1;stopPlay();softRender()">Vider</button><button class="chip" onclick="saveList('queue')">Enregistrer</button><button class="chip" onclick="shareKind('queue')">Partager</button></span></div>
       <div class="card mt2" style="padding:4px 14px">${Q.items.map((it,i)=>{const l=qLabel(it),cur=i===Q.i;return `<div class="trow">${cover(l)}<div class="tm clk" onclick="qPlay(${i})"><b style="${cur?"color:var(--blue)":""}">${esc(l.t)}</b><div class="hint">${esc(l.a||"")}${cur?" · en cours":""}</div></div></div>`;}).join("")}</div>`
       :`<div class="card mt"><div class="empty">La file est vide. Lance une playlist, tes fichiers ou une radio (bouton radio du lecteur).</div></div>`);}
   const pls=S.pls||[];
-  return head+`<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="importPlaylist()">${svg("plus",15)}Importer une playlist</button></div>
+  return head+`<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="pasteImport()">${svg("paste",15)}Coller un lien ou une liste</button><button class="btn ghost" onclick="importPlaylist()">${svg("plus",15)}Autres façons</button></div>
     <div class="card mt" style="padding:4px 14px">${pls.length?pls.map(plCard).join(""):`<div class="empty">Importe une playlist (lien Deezer, liste copiée ou fichier) pour l’écouter ici et y trouver de nouveaux sons.</div>`}</div>`;};
+
+/* ===================== 1.6 « système D » : coller, enregistrer en playlist, partager, transférer, diagnostic ===================== */
+Object.assign(IC,{share:'<path d="M12 3v13"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>',
+  paste:'<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>',
+  plplus:'<path d="M3 6h12M3 12h12M3 18h7"/><path d="M18 14v6M15 17h6"/>',diag:'<path d="M3 12h4l3-8 4 16 3-8h4"/>'});
+
+/* ---------- Boîte noire : chaque erreur est notée sur l’appareil, rien n’est envoyé sans toi ---------- */
+const LOG=[];let logT=null;
+function logErr(k,m,s){LOG.push({d:new Date().toISOString(),v:VERSION,k,m:String(m||"").slice(0,300),s:String(s||"").slice(0,120),e:S.screen});
+  if(LOG.length>100)LOG.splice(0,LOG.length-100);clearTimeout(logT);logT=setTimeout(()=>DB.set("log",LOG),500);}
+window.addEventListener("error",e=>logErr("erreur",e.message,String(e.filename||"").split("/").pop()+":"+e.lineno));
+window.addEventListener("unhandledrejection",e=>logErr("promesse",e.reason&&(e.reason.message||e.reason)));
+AU.addEventListener("error",()=>{if(PL&&AU.src!==SIL)logErr("audio",AU.error?("code "+AU.error.code+" "+(AU.error.message||"")):"?",PL.src);});
+AU.addEventListener("stalled",()=>{if(PL)logErr("audio","lecture bloquée",PL.src);});
+
+/* ---------- Journal de lecture : de quoi MESURER ce qui se passe écran verrouillé ---------- */
+const EVT=[],EV0=Date.now();
+function ev(k,d){EVT.push(`${((Date.now()-EV0)/1000).toFixed(1)}s ${k}${d?" "+String(d).slice(0,60):""}`);if(EVT.length>120)EVT.shift();}
+["play","pause","ended","waiting","stalled","playing","error"].forEach(n=>AU.addEventListener(n,()=>ev("audio:"+n,PL?PL.x.t:"")));
+document.addEventListener("visibilitychange",()=>ev("page:"+document.visibilityState));
+let logLoaded=false;
+async function loadLog(){try{const old=await DB.get("log");if(old&&old.length)LOG.unshift(...old);if(LOG.length>100)LOG.splice(0,LOG.length-100);}catch(e){}logLoaded=true;if(LOG.length)DB.set("log",LOG);}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
+
+/* ---------- Enchaînement sans coupure : le son suivant est prêt AVANT la fin du son en cours ---------- */
+const DZP={};let QPRE=null;
+async function dzPreview(dz){const c=DZP[dz];if(c&&Date.now()-c.t<8*60e3)return c.u;const d=await jsonp(`https://api.deezer.com/track/${dz}`);
+  if(!d.preview)throw new Error("pas d’extrait");DZP[dz]={u:d.preview,t:Date.now()};return d.preview;}
+/** Indice du son suivant, sans rien lancer. En aléatoire, le choix est gardé pour que le son préparé soit bien celui qui jouera. */
+function qPeek(auto){const n=Q.items.length;if(!n)return -1;if(auto&&Q.repeat==="one")return Q.i;
+  if(Q.shuffle&&n>1){if(Q.nextI!=null&&Q.nextI!==Q.i&&Q.nextI<n&&!Q.played.has(Q.nextI))return Q.nextI;
+    let left=Q.items.map((_,j)=>j).filter(j=>!Q.played.has(j));
+    if(!left.length){if(auto&&Q.repeat!=="all")return -1;Q.played=new Set([Q.i]);left=Q.items.map((_,j)=>j).filter(j=>j!==Q.i);}
+    return (Q.nextI=left[Math.floor(Math.random()*left.length)]);}
+  let i=Q.i+1;if(i>=n){if(auto&&Q.repeat!=="all")return -1;i=0;}return i;}
+function qNext(auto=false){const i=qPeek(auto);if(i<0)return stopPlay();qPlay(i);}
+async function qPrefetch(){const i=qPeek(true);if(i<0||i===Q.i)return;const it=Q.items[i],key=qKey(it);if(QPRE&&QPRE.i===i&&QPRE.k===key)return;
+  try{let url,x,src;const tr=it.n&&T(it.n);
+    if(it.fid){const b=await DB.get("file_"+it.fid);if(!b)return;url=URL.createObjectURL(b);x={t:it.t,a:it.a};src="sur ce téléphone";}
+    else if(it.dz||(tr&&tr.wish&&tr.dz)){const dz=it.dz||tr.dz;url=await dzPreview(dz);x=tr?tr:{dz,t:it.t,a:it.a,cover:it.cover};src="extrait 30 s · Deezer";}
+    else return;
+    if(QPRE&&QPRE.url&&QPRE.url.startsWith("blob:"))URL.revokeObjectURL(QPRE.url);
+    QPRE={i,k:key,url,x,src};ev("prêt",x.t);}catch(e){ev("prépa-ko",e.message);}}
+AU.addEventListener("playing",()=>{if(inQueue())qPrefetch();});
+/** Fin d’un son de la file : on remplace la source et on relance tout de suite, sans repasser par l’arrêt ni par Internet. */
+function qAdvance(){const i=qPeek(true);if(i<0)return stopPlay();const it=Q.items[i],pre=QPRE;
+  if(i===Q.i){AU.currentTime=0;AU.play().catch(()=>qPlay(i));return;}
+  if(pre&&pre.i===i&&pre.k===qKey(it)&&pre.url){const old=AU.src;Q.i=i;Q.nextI=null;Q.played.add(i);Q.fails=0;PL={u:qKey(it),x:pre.x,src:pre.src};QPRE=null;
+    if(old&&old.startsWith("blob:")&&old!==pre.url)URL.revokeObjectURL(old);AU.src=pre.url;mediaSync();
+    AU.play().then(()=>{ev("enchaîné",pre.x.t);startProg();renderPlayer();refreshPlay();},e=>{ev("enchaîné-ko",e.message);qPlay(i);});return;}
+  ev("pas prêt → chargement normal");qPlay(i);}
+AU.onended=()=>{ev("fin du son");if(inQueue())qAdvance();else stopPlay();};
+function previewFail(){if(Q.items.length&&Q.fails<3)toast("Pas d’extrait pour ce son, je passe au suivant.");else toast("Extrait indisponible.",false,true);}
+
+/* ---------- Test d’écoute écran verrouillé : 5 extraits d’affilée, à mesurer ---------- */
+async function startLockTest(){closeModal();toast("Je prépare 5 extraits…");
+  try{const d=await jsonp("https://api.deezer.com/chart/0/tracks?limit=12");const items=(d.data||[]).filter(t=>t.preview).slice(0,5).map(t=>{const x=dzItemA(t);return {dz:x.dz,t:x.t,a:x.a,cover:x.cover};});
+    if(items.length<3)throw new Error("pas assez d’extraits");EVT.length=0;ev("TEST ÉCRAN VERROUILLÉ : début");Q.shuffle=false;Q.repeat="off";qStart(items,0,"Test écran verrouillé");
+    modal(`<h2>Test lancé</h2><ol style="padding-left:20px;line-height:1.7" class="mt"><li>Appuie sur le bouton latéral : <b>l’écran se verrouille</b>.</li><li>Attends <b>3 minutes</b> (5 extraits de 30 s, soit 2 min 30).</li><li>Rouvre l’iPhone, ouvre SetMate, <b>Réglages</b>, <b>Lancer le diagnostic</b>, <b>Envoyer le rapport</b>.</li></ol><p class="hint mt2">Ça marche si le son ne s’arrête jamais. Le rapport me dira à la seconde près ce qui s’est passé.</p><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">C’est parti</button></div>`);}
+  catch(e){toast("Test impossible : "+esc(e.message),false,true);}}
+
+/* ---------- Partager (menu Partager de l’iPhone : AirDrop, WhatsApp, Notes, Fichiers…) ---------- */
+async function shareOut({title,text,file,name,type}){
+  try{if(file&&navigator.canShare){const f=new File([file],name,{type:type||file.type||"text/plain"});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title});return true;}}
+    if(!file&&navigator.share){await navigator.share({title,text});return true;}}
+  catch(e){if(e&&e.name==="AbortError")return false;logErr("partage",e.message);}
+  if(text&&navigator.clipboard){try{await navigator.clipboard.writeText(text);toast("Copié : colle-le où tu veux.");return true;}catch(e){}}
+  if(file){download(file,name);toast("Fichier téléchargé.");return true;}return false;}
+const songOf=x=>{const t=x&&x.n?T(x.n)||x:x;return t?{t:t.t,a:t.a,dz:t.dz||null,cover:t.cover||null,pop:t.pop,aid:t.aid}:null;};
+function shareList(title,list){const items=list.map(songOf).filter(x=>x&&x.t);if(!items.length)return toast("Liste vide.",false,true);
+  shareOut({title,text:title+"\n\n"+items.map((x,i)=>`${i+1}. ${x.a?x.a+" - ":""}${x.t}`).join("\n")+"\n\nPréparé avec SetMate"});}
+async function shareData(){const st={...S,undo:undefined},name=`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`;
+  const ok=await shareOut({title:"Sauvegarde SetMate",file:new Blob([JSON.stringify({setmate:VERSION,date:Date.now(),state:st})],{type:"application/json"}),name,type:"application/json"});
+  if(ok)toast("Sauvegarde prête. Sur l’autre appareil : Réglages, Restaurer, puis choisis ce fichier. Tes fichiers audio ne sont pas dedans.");}
+
+/* ---------- Enregistrer en playlist, depuis n’importe quelle liste ---------- */
+let SVI=[];
+function saveAsPlaylist(name,list,title="Enregistrer en playlist"){SVI=list.map(songOf).filter(x=>x&&x.t);if(!SVI.length)return toast("Rien à enregistrer.",false,true);
+  const mine=(S.pls||[]).slice(0,15);
+  modal(`<h2>${esc(title)}</h2><p class="hint mt2">${SVI.length>1?pl(SVI.length,"son"):esc((SVI[0].a?SVI[0].a+" - ":"")+SVI[0].t)}</p>
+   ${mine.length?`<p class="hint mt">Dans une playlist existante :</p><div class="row mt2" style="flex-wrap:wrap;gap:6px">${mine.map(p=>`<button class="chip" onclick="svTo('${p.id}')">${esc(p.name)}</button>`).join("")}</div><p class="hint mt">Ou une nouvelle :</p>`:""}
+   <input class="f mt2" id="svName" value="${esc(name)}" style="width:100%" autocomplete="off">
+   <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="svNew()">Créer la playlist</button></div>`);}
+function addToPlaylist(x){saveAsPlaylist(x&&x.t||"Ma playlist",[x],"Ajouter à une playlist");}
+function svNew(){const name=($("#svName").value||"").trim()||"Ma playlist";const p={id:"p"+Date.now().toString(36),name,src:"setmate",date:Date.now(),items:SVI.map(x=>({...x})),cover:(SVI.find(x=>x.cover)||{}).cover||null};
+  S.pls.unshift(p);save();closeModal();pushUndo("création de la playlist",()=>{S.pls=S.pls.filter(y=>y!==p);save();});
+  toast(`Playlist « ${esc(name)} » créée (${pl(p.items.length,"son")}). Elle est dans Écouter.`,true);softListen();}
+function svTo(id){const p=plGet(id);if(!p)return;const add=SVI.filter(x=>!p.items.some(y=>sameSong(x,y)));closeModal();
+  if(!add.length)return toast(`Déjà dans « ${esc(p.name)} ».`);const cl=add.map(x=>({...x}));p.items.push(...cl);save();
+  pushUndo("ajout à la playlist",()=>{p.items=p.items.filter(y=>!cl.includes(y));save();softListen();});
+  toast(`${pl(add.length,"son")} ajouté${add.length>1?"s":""} à « ${esc(p.name)} ».`,true);softListen();}
+PLSRC.setmate="créée dans SetMate";
+function playSet(){const items=S.set.ids.map(n=>{const t=T(n);return t?{n,t:t.t,a:t.a,cover:t.cover}:null;}).filter(Boolean);qStart(items,0,"Set · "+S.set.name);}
+const setList=()=>S.set.ids.map(n=>T(n)).filter(Boolean);
+/** Boutons à ajouter sous une liste : enregistrer en playlist et partager. */
+function listActions(kind,label){return `<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn ghost sm" onclick="saveList('${kind}')">${svg("plplus",14)}Enregistrer en playlist</button><button class="btn ghost sm" onclick="shareKind('${kind}')">${svg("share",14)}Partager</button></div>`;}
+function listOf(kind){const on=new Set(STYLES.filter(([k])=>S.styles[k]).map(x=>x[1]));
+  if(kind==="search")return [`Recherche « ${S.search.q} »`,S.search.items||[]];
+  if(kind==="moment")return [`Tendances du ${new Date(S.trends.date||Date.now()).toLocaleDateString("fr-FR")}`,S.trends.items||[]];
+  if(kind==="disc")return [`Pépites du ${new Date().toLocaleDateString("fr-FR")}`,(S.disc.items||[]).filter(x=>on.has(x.style))];
+  if(kind==="liste")return ["À récupérer",wishes()];
+  if(kind==="set")return [S.set.name||"Mon set",setList()];
+  if(kind==="queue")return [Q.label||"File d’écoute",Q.items.map(qLabel)];
+  if(kind.startsWith("gig:")){const g=S.gigs.find(x=>String(x.id)===kind.slice(4));return [g?`${g.lieu} · ${fmtDate(g.date)}`:"Soirée",g?g.played.map(T).filter(Boolean):[]];}
+  if(kind.startsWith("pl:")){const p=plGet(kind.slice(3));return [p?p.name:"Playlist",p?p.items:[]];}
+  return ["Liste",[]];}
+function saveList(kind){const [n,l]=listOf(kind);saveAsPlaylist(n,l);}
+function shareKind(kind){const [n,l]=listOf(kind);shareList(n,l);}
+const _vTrend=VIEWS.trend;
+/** Enregistrer / partager : juste sous les onglets (ou sous la barre de recherche), là où le doigt les trouve sans défiler. */
+VIEWS.trend=()=>{const h=_vTrend(),k=S.search.q?"search":S.trTab==="decouverte"?"disc":S.trTab==="liste"?"liste":"moment";if(!listOf(k)[1].length)return h;
+  const act=listActions(k);const i=h.indexOf('class="seg mt"');
+  if(i>=0){const j=h.indexOf("</button></div>",i)+"</button></div>".length;return h.slice(0,j)+act+h.slice(j);}
+  const j=h.indexOf("</form>");return j>=0?h.slice(0,j+7)+act+h.slice(j+7):h+act;};
+const _gigDetail=gigDetail;
+gigDetail=function(id){_gigDetail(id);const g=S.gigs.find(x=>x.id===id),m=$(".modal");if(g&&m&&g.played.length)m.insertAdjacentHTML("beforeend",listActions("gig:"+id).replace('class="row mt"','class="row mt" style="gap:8px;flex-wrap:wrap;margin-top:14px"'));};
+
+/* ---------- Coller : un lien ou une liste copiés dans une autre appli ---------- */
+async function pasteImport(){let txt="";try{txt=await navigator.clipboard.readText();}catch(e){}
+  if(!txt||!txt.trim()){importPlaylist();setTimeout(()=>{const t=$("#plTxt");if(t)t.focus();},80);
+    return toast("Je n’ai pas pu lire ce que tu as copié. Appuie longuement dans la case 2, puis Coller.",false,true);}
+  handlePasted(txt.trim());}
+function handlePasted(txt){const u=(txt.match(/https?:\/\/\S+/)||[])[0];
+  if(u&&txt.split(/\n/).filter(Boolean).length<=2){
+    let m;if((m=u.match(/deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)/)))return plFromDeezer(m[1],"");
+    if((m=u.match(/deezer\.com\/(?:[a-z]{2}\/)?album\/(\d+)/)))return albFromDeezer(m[1]);
+    if((m=u.match(/deezer\.com\/(?:[a-z]{2}\/)?track\/(\d+)/)))return trackFromDeezer(m[1]);
+    if(/link\.deezer\.com|deezer\.page\.link|dzr\.page\.link/i.test(u))return helpModal("deezer");
+    if(/spotify\.com|spotify\.link/i.test(u))return helpModal("spotify");
+    if(/music\.apple\.com/i.test(u))return helpModal("apple");
+    return toast("Ce lien n’est pas une playlist que je sais lire.",false,true);}
+  const items=parseList(txt);if(!items.length)return toast("Je n’ai reconnu aucun son dans ce que tu as copié.",false,true);
+  SVI=items;modal(`<h2>${pl(items.length,"son")} reconnu${items.length>1?"s":""}</h2><p class="hint mt2">${items.slice(0,5).map(x=>esc((x.a?x.a+" - ":"")+x.t)).join("<br>")}${items.length>5?"<br>…":""}</p>
+    <input class="f mt" id="cfName" value="Playlist du ${new Date().toLocaleDateString("fr-FR")}" style="width:100%" autocomplete="off">
+    <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="const n=($('#cfName').value||'').trim()||'Ma playlist';closeModal();plFromItems(SVI,n,'texte')">Importer</button></div>`);}
+async function albFromDeezer(id){toast("J’importe l’album…");try{const d=await jsonp(`https://api.deezer.com/album/${id}`);
+  const items=((d.tracks&&d.tracks.data)||[]).map(t=>Object.assign(dzItemA(t),{cover:d.cover_medium}));plCreate(d.title+(d.artist?" · "+d.artist.name:""),"deezer",items,d.cover_medium);}
+  catch(e){toast("Album introuvable : "+esc(e.message),false,true);}}
+async function trackFromDeezer(id){try{const d=await jsonp(`https://api.deezer.com/track/${id}`);addToPlaylist(Object.assign(dzItemA(d),{cover:d.album&&d.album.cover_medium}));}
+  catch(e){toast("Son introuvable : "+esc(e.message),false,true);}}
+document.addEventListener("paste",e=>{if(S.screen!=="listen"||$(".ov")||/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
+  const t=e.clipboardData&&e.clipboardData.getData("text");if(t&&t.trim()){e.preventDefault();handlePasted(t.trim());}});
+const HELP={
+  apple:["Depuis Apple Music",`<div class="banner" style="margin:0 0 10px"><b>Recette non testée.</b> Je l’ai écrite de mémoire : les noms des actions peuvent différer sur ton iPhone. On la construit ensemble, et je la corrige.</div><p><b>Sur iPhone, avec l’app Raccourcis</b> (une seule fois, environ 3 min).</p>
+    <ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Ouvre <b>Raccourcis</b>, touche <b>+</b>.</li><li>Ajoute l’action <b>Rechercher de la musique</b> (Find Music). Ajoute un filtre : <b>Playlist</b> est <b>ta playlist</b>. Désactive la limite.</li>
+    <li>Ajoute <b>Répéter avec chaque élément</b>. Dedans, ajoute <b>Texte</b> : touche <b>Élément répété</b>, choisis <b>Artiste</b>, tape « - », puis <b>Élément répété</b>, <b>Titre</b>.</li>
+    <li>Après <b>Fin de la répétition</b>, ajoute <b>Combiner le texte</b> (avec : nouvelles lignes), puis <b>Copier dans le presse-papiers</b>.</li>
+    <li>Lance le raccourci, ouvre SetMate, <b>Écouter</b>, <b>Coller</b>.</li></ol>
+    <p class="mt2"><b>Sur Mac</b> : dans Musique, ouvre la playlist, ⌘ A puis ⌘ C, et colle dans SetMate.</p>
+    <p class="hint mt2">Le lien de partage Apple Music ne se lit pas directement : Apple ne l’autorise pas sans compte développeur payant.</p>`],
+  spotify:["Depuis Spotify",`<ol style="padding-left:20px;line-height:1.7"><li>Dans Safari, ouvre <b>exportify.app</b> (outil gratuit et libre, non lié à SetMate), connecte ton compte Spotify.</li>
+    <li>Touche <b>Export</b> à côté de ta playlist : un fichier .csv arrive dans Fichiers.</li><li>Dans SetMate : <b>Écouter</b>, <b>Autres façons</b>, <b>Choisir un fichier</b>.</li></ol>
+    <p class="hint mt2">À essayer : Spotify a durci son accès en février 2026, je n’ai pas pu confirmer qu’Exportify marche encore. Autre outil possible : TuneMyMusic (export en fichier). Le lien Spotify seul ne se lit pas : Spotify l’interdit aux petites applis.</p>`],
+  deezer:["Lien court Deezer",`<p>L’appli Deezer donne un lien court que SetMate ne peut pas suivre.</p><ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Colle le lien dans <b>Safari</b> et ouvre-le.</li>
+    <li>Touche la barre d’adresse, <b>Copier</b> (le lien complet contient <b>/playlist/</b> suivi de chiffres).</li><li>Reviens dans SetMate, <b>Coller</b>.</li></ol>`]};
+function helpModal(k){const [t,h]=HELP[k];modal(`<h2>${t}</h2><div class="mt">${h}</div><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Compris</button></div>`);}
+
+/* ---------- Diagnostic : ce que ton appareil permet vraiment ---------- */
+async function runDiag(){modal(`<h2>Diagnostic</h2><p class="hint mt2">Je teste ton appareil…</p>`);const R=[],add=(ok,t,d)=>R.push({ok,t,d});
+  const st=installed();add(isIOS?(st?"ok":"warn"):"ok","Appli installée",st?"Oui, ouverte depuis l’icône.":isIOS?"Non : Safari, Partager, Sur l’écran d’accueil.":"Navigateur");
+  add(navigator.serviceWorker&&navigator.serviceWorker.controller?"ok":"warn","Hors connexion",navigator.serviceWorker&&navigator.serviceWorker.controller?"Prêt : SetMate s’ouvre sans réseau.":"Pas encore actif : rouvre SetMate une fois avec du réseau.");
+  try{const p=navigator.storage&&navigator.storage.persisted?await navigator.storage.persisted():null;add(p?"ok":"warn","Mémoire protégée",p?"L’iPhone ne doit pas effacer tes données.":"Non garantie : fais une sauvegarde de temps en temps.");}catch(e){add("warn","Mémoire protégée","Inconnu");}
+  try{const e=await navigator.storage.estimate();add("ok","Place",`${Math.round((e.usage||0)/1048576)} Mo utilisés sur ${e.quota>1073741824?Math.round(e.quota/1073741824)+" Go":Math.round((e.quota||0)/1048576)+" Mo"} possibles`);}catch(e){add("warn","Place","Inconnue");}
+  try{await DB.set("diag",Date.now());const v=await DB.get("diag");add(v?"ok":"ko","Enregistrement des données",v?"Lecture et écriture OK.":"Échec : tes données risquent de ne pas être gardées.");}catch(e){add("ko","Enregistrement des données",e.message);}
+  try{const a=new Audio(SIL);a.muted=true;await a.play();add("ok","Lecture audio","OK.");}catch(e){add("ko","Lecture audio",e.message);}
+  add("mediaSession" in navigator?"ok":"warn","Écran verrouillé et écouteurs","mediaSession" in navigator?"Titre et boutons disponibles. Lecture continue : à vérifier avec le test d’écoute.":"Non disponible.");
+  const SRx=window.SpeechRecognition||window.webkitSpeechRecognition;add(!SRx?"warn":isIOS&&st?"warn":"ok","Reconnaissance vocale (débrief)",!SRx?"Absente : dicte avec le micro du clavier.":isIOS&&st?"Souvent indisponible dans une appli installée sur iPhone : utilise le micro du clavier.":"Disponible.");
+  add(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia?"ok":"warn","Micro","Accès possible (demandé seulement quand tu l’utilises).");
+  const f=new File(["x"],"t.txt",{type:"text/plain"});add(navigator.share?"ok":"warn","Partager",navigator.share?(navigator.canShare&&navigator.canShare({files:[f]})?"Texte et fichiers (AirDrop, WhatsApp…).":"Texte seulement."):"Non : je copie à la place.");
+  add(navigator.clipboard&&navigator.clipboard.readText?"ok":"warn","Coller depuis une autre appli",navigator.clipboard&&navigator.clipboard.readText?"OK (l’iPhone te demandera de confirmer « Coller »).":"Non : colle à la main dans la case.");
+  add("wakeLock" in navigator?"ok":"warn","Écran toujours allumé","wakeLock" in navigator?"Disponible (pour le futur mode soirée).":"Non disponible (iOS 18.4 ou plus nécessaire).");
+  add("setAppBadge" in navigator?"ok":"warn","Pastille sur l’icône","setAppBadge" in navigator?"Disponible.":"Non disponible ici.");
+  const t0=Date.now();try{await jsonp("https://api.deezer.com/chart/0/tracks?limit=1",6000);add("ok","Catalogue Deezer",`Répond en ${Date.now()-t0} ms.`);}catch(e){add(navigator.onLine?"ko":"warn","Catalogue Deezer",navigator.onLine?"Ne répond pas : "+e.message:"Pas de réseau.");}
+  add(LOG.length?"warn":"ok","Erreurs enregistrées",LOG.length?pl(LOG.length,"erreur")+" dans la boîte noire.":"Aucune.");
+  window._diag=R;const ic={ok:"🟢",warn:"🟠",ko:"🔴"};
+  modal(`<h2>Diagnostic</h2><p class="hint mt2">SetMate ${VERSION} · ${esc(devName())}</p><div class="mt">${R.map(r=>`<div class="trow" style="align-items:flex-start"><span>${ic[r.ok]}</span><div class="tm"><b>${esc(r.t)}</b><div class="hint">${esc(r.d)}</div></div></div>`).join("")}</div>
+   <div class="row mt" style="justify-content:flex-end;gap:8px;flex-wrap:wrap"><button class="btn ghost" onclick="closeModal()">Fermer</button><button class="btn ghost" onclick="startLockTest()">Test écran verrouillé</button><button class="btn" onclick="sendReport()">${svg("share",14)}Envoyer le rapport</button></div>`);}
+function devName(){const u=navigator.userAgent,m=u.match(/iPhone OS (\d+)_(\d+)/)||u.match(/CPU OS (\d+)_(\d+)/);return m?(/iPad/.test(u)?"iPad":"iPhone")+" iOS "+m[1]+"."+m[2]:/Android [\d.]+/.test(u)?u.match(/Android [\d.]+/)[0]:/Mac/.test(u)?"Mac":/Windows/.test(u)?"Windows":"Appareil";}
+function sendReport(){const R=window._diag||[],ic={ok:"OK",warn:"ATTENTION",ko:"PROBLÈME"};
+  const txt=`Rapport SetMate ${VERSION} · ${devName()} · ${installed()?"appli installée":"navigateur"} · ${new Date().toLocaleString("fr-FR")}\n\n`+R.map(r=>`${ic[r.ok]} · ${r.t} : ${r.d}`).join("\n")+
+    `\n\nJournal de lecture (${Math.min(EVT.length,40)} derniers) :\n`+(EVT.slice(-40).join("\n")||"vide")+`\n\nBoîte noire (${LOG.length}) :\n`+(LOG.slice(-30).map(l=>`${l.d.slice(5,16)} [${l.k}] ${l.m}${l.s?" ("+l.s+")":""} · écran ${l.e}`).join("\n")||"vide");
+  shareOut({title:"Rapport SetMate",text:txt});}
+function clearLog(){LOG.length=0;DB.set("log",[]);toast("Boîte noire vidée.");softRender();}
+const _vSet=VIEWS.settings;
+VIEWS.settings=()=>_vSet()+`<div class="card mt"><h3>${svg("share",16)} Transférer mes données</h3><p class="hint mt2">Passe ta musique analysée, tes playlists, tes sets et tes soirées d’un appareil à l’autre (Mac, iPhone, Safari, appli installée) par AirDrop, Fichiers ou WhatsApp. Tes fichiers audio ne sont pas dedans.</p><div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="shareData()">${svg("share",14)}Envoyer mes données</button><button class="btn ghost" onclick="importData()">Recevoir des données</button></div></div>`+`<div class="card mt"><h3>${svg("diag",16)} Diagnostic de cet appareil</h3><p class="hint mt2">Teste en 10 secondes ce que ton téléphone permet vraiment, et envoie-moi le rapport. Boîte noire : ${LOG.length?pl(LOG.length,"erreur")+" notée"+(LOG.length>1?"s":""):"aucune erreur notée"}.</p>
+  <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="runDiag()">Lancer le diagnostic</button><button class="btn ghost" onclick="startLockTest()">Test écran verrouillé</button>${LOG.length?`<button class="btn ghost sm" onclick="runDiag()">Envoyer le journal</button><button class="btn ghost sm" onclick="clearLog()">Vider la boîte noire</button>`:""}</div></div>`;
+
+/* ---------- Débrief : sur iPhone installé, la dictée du clavier prend le relais ---------- */
+function srOK(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;return SR&&!(isIOS&&installed())?SR:null;}
+
+/* ---------- Nouveautés de la version ---------- */
+const NEWS={"1.6":["<b>Coller</b> (Écouter) : copie un lien Deezer ou une liste dans une autre appli, puis Coller. Aide pour Apple Music et Spotify.","<b>Enregistrer en playlist</b> et <b>Partager</b> : tendances, pépites, recherche, set, soirée, file d’écoute.","<b>Ajouter à une playlist</b> depuis le lecteur.","<b>Écouter le set</b> en entier (Préparer).","<b>Transférer mes données</b> par AirDrop (Réglages).","<b>Diagnostic</b> de ton téléphone + boîte noire des erreurs (Réglages).","Débrief : sur iPhone, dicte avec le micro du clavier."]};
+function showNews(){const n=NEWS[VERSION];if(!n)return;modal(`<h2>Nouveau dans SetMate ${VERSION}</h2><ul class="mt" style="padding-left:20px;line-height:1.7">${n.map(x=>`<li>${x}</li>`).join("")}</ul><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">C’est parti</button></div>`);}
+function checkNews(){if(S.seenV===VERSION)return;const old=S.onboarded||S.tracks.length||(S.pls||[]).length;S.seenV=VERSION;save();if(old)showNews();}
 
 /* ===================== FENÊTRES, RECHERCHE, CLAVIER ===================== */
 function modal(html){$("#layer").innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal" role="dialog">${html}</div></div>`;}
@@ -1697,9 +1883,9 @@ document.addEventListener("keydown",e=>{const typing=/INPUT|TEXTAREA|SELECT/.tes
 window.addEventListener("focus",()=>{if(H.dl&&PERM.dl==="granted")scanDl();});
 
 /* ===================== DÉMARRAGE ===================== */
-(async()=>{await load();
+(async()=>{await load();await loadLog();
   if(H.serato&&PERM.serato==="granted"&&!S.demo)await loadSerato(false);
-  render();startWatch();
+  render();startWatch();checkNews();
   if(S.trends.date<lastThursday())await refreshTrends(true);else analyzeQueue(S.trends.items);
   if(S.tracks.length&&(!S.disc.date||Date.now()-S.disc.date>7*864e5))loadDiscovery(true);else analyzeQueue(S.disc.items||[]);
   if("serviceWorker" in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register("sw.js").catch(()=>{});
