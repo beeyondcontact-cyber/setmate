@@ -1406,7 +1406,7 @@ VIEWS.settings=()=>{const st=k=>H[k]?(PERM[k]==="granted"?'<span class="tag ok">
 function showSuggLog(){const rows=SESS.log.slice(-60).reverse();
   modal(`<h2>Journal des suggestions</h2><p class="hint">Pourquoi un son n’est plus proposé (cette session seulement, rien n’est envoyé).</p><div class="mt" style="max-height:50vh;overflow:auto">${rows.length?rows.map(r=>`<div class="mini"><span class="hint" style="width:44px">${new Date(r.at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</span><div style="flex:1;min-width:0"><b>${esc(r.t)}</b><div class="hint">${esc(r.reason)}</div></div></div>`).join(""):'<p class="hint">Rien pour l’instant.</p>'}</div><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">OK</button></div>`);}
 function exportData(){const st={...S,undo:undefined};download(new Blob([JSON.stringify({setmate:VERSION,date:Date.now(),state:st})],{type:"application/json"}),`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`);toast("Sauvegarde téléchargée.");}
-function importData(){const i=$("#fileIn");i.accept=".json";i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!d.setmate)throw new Error("fichier non reconnu");const keep=S.undo;Object.assign(S,d.state);S.undo=keep;reindex();save(true);render();toast("Données restaurées.");}catch(e){toast("Restauration impossible : "+esc(e.message),false,true);}i.value="";};i.click();}
+function importData(){const i=$("#fileIn");i.accept=".json";i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!d.setmate)throw new Error("fichier non reconnu");await restoreState(d);}catch(e){toast("Restauration impossible : "+esc(e.message),false,true);}i.value="";};i.click();}
 function resetAll(){modal(`<h2>Tout effacer ?</h2><p class="hint mt2">Efface les données SetMate de ce navigateur (bibliothèque lue, soirées, débriefs, préférences). Tes fichiers et ta bibliothèque Serato ne sont pas touchés.</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn red" onclick="doReset()">Effacer</button></div>`);}
 async function doReset(){for(const k of ["state","tracks","h_serato","h_music","h_dl",...(S.own||[]).map(o=>"file_"+o.fid)])await DB.del(k);location.reload();}
 
@@ -1419,9 +1419,9 @@ async function playTrack(n,force=false){const x=T(n);const u="t"+n;if(!force&&PL
   else if(x.dz){try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";}catch(e){previewFail();return stopPlay();}}
   else{const p=await dzSearch(x);if(PL?.u!==u)return;if(!p){toast("Pas d’extrait disponible. Connecte ton dossier Musique pour écouter tes fichiers.",false,true);return stopPlay();}AU.src=p.preview;PL.src="extrait 30 s · Deezer";if(p.cover)x.cover=x.cover||p.cover;}
   try{await AU.play();}catch(e){toast("Lecture impossible : "+esc(e.message),false,true);return stopPlay();}startProg();renderPlayer();refreshPlay();}
-async function dzSearch(x){const k=x.a+"|"+x.t;if(k in DZC)return DZC[k];try{const art=String(x.a).split(/,|&| feat/i)[0].trim(),tit=String(x.t).replace(/\(.*\)/,"").trim();
+async function dzSearch(x){const k=x.a+"|"+x.t;if(k in DZC&&(!DZC[k]||Date.now()-DZC[k].t<8*60e3))return DZC[k];try{const art=String(x.a).split(/,|&| feat/i)[0].trim(),tit=String(x.t).replace(/\(.*\)/,"").trim();
   const d=await jsonp("https://api.deezer.com/search?q="+encodeURIComponent(art+" "+tit)+"&limit=5");const a0=norm(art).trim().split(" ")[0];
-  const r=(d.data||[]).find(it=>it.preview&&norm(it.artist?.name).includes(a0)&&norm(it.title).includes(norm(tit).trim().split(" ")[0]));DZC[k]=r?{preview:r.preview,cover:r.album?.cover_medium}:null;}catch(e){DZC[k]=null;}return DZC[k];}
+  const r=(d.data||[]).find(it=>it.preview&&norm(it.artist?.name).includes(a0)&&norm(it.title).includes(norm(tit).trim().split(" ")[0]));DZC[k]=r?{preview:r.preview,cover:r.album?.cover_medium,t:Date.now()}:null;}catch(e){DZC[k]=null;}return DZC[k];}
 async function playDz(dz,force=false,meta=null){const u="dz"+dz;if(!force&&PL&&PL.u===u)return stopPlay();if(!force)Q.items=[];stopPlay();const it=meta||findDz(dz)||{t:"…",a:""};PL={u,x:{dz,t:it.t,a:it.a,cover:it.cover,k:S.trendCache[dz]?.k,bpm:S.trendCache[dz]?.bpm},src:"…"};renderPlayer();refreshPlay();
   try{const d=await jsonp(`https://api.deezer.com/track/${dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";await AU.play();startProg();}catch(e){previewFail();return stopPlay();}renderPlayer();refreshPlay();}
 function startProg(){clearInterval(progT);progT=setInterval(()=>{const b=$("#pbar");if(b&&AU.duration)b.style.width=(AU.currentTime/AU.duration*100)+"%";},250);}
@@ -1456,7 +1456,7 @@ function qPrev(){if(AU.currentTime>3){AU.currentTime=0;return;}qPlay(Math.max(0,
 function qToggle(){if(!PL){if(Q.items.length)qPlay(Math.max(0,Q.i));return;}if(AU.paused)AU.play().catch(()=>{});else AU.pause();renderPlayer();}
 function qRepeat(){Q.repeat=Q.repeat==="off"?"all":Q.repeat==="all"?"one":"off";renderPlayer();toast(Q.repeat==="off"?"Répétition coupée.":Q.repeat==="all"?"Je répète toute la file.":"Je répète ce son.");}
 function seekBar(e,el){if(!AU.duration)return;const r=el.getBoundingClientRect();AU.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*AU.duration;}
-AU.onplay=AU.onpause=()=>{if(PL)renderPlayer();else mediaSync();};
+AU.onplay=AU.onpause=()=>{if(AU.ended)return;if(PL)renderPlayer();else mediaSync();};
 
 /* ---------- Écran verrouillé et écouteurs (Media Session) ---------- */
 function mediaSync(){if(!("mediaSession" in navigator))return;const ms=navigator.mediaSession;
@@ -1714,8 +1714,8 @@ AU.addEventListener("playing",()=>{if(inQueue())qPrefetch();});
 function qAdvance(){const i=qPeek(true);if(i<0)return stopPlay();const it=Q.items[i],pre=QPRE;
   if(i===Q.i){AU.currentTime=0;AU.play().catch(()=>qPlay(i));return;}
   if(pre&&pre.i===i&&pre.k===qKey(it)&&pre.url){const old=AU.src;Q.i=i;Q.nextI=null;Q.played.add(i);Q.fails=0;PL={u:qKey(it),x:pre.x,src:pre.src};QPRE=null;
-    if(old&&old.startsWith("blob:")&&old!==pre.url)URL.revokeObjectURL(old);AU.src=pre.url;mediaSync();
-    AU.play().then(()=>{ev("enchaîné",pre.x.t);startProg();renderPlayer();refreshPlay();},e=>{ev("enchaîné-ko",e.message);qPlay(i);});return;}
+    if(old&&old.startsWith("blob:")&&old!==pre.url)URL.revokeObjectURL(old);AU.src=pre.url;const pr=AU.play();mediaSync();
+    pr.then(()=>{ev("enchaîné",pre.x.t);startProg();renderPlayer();refreshPlay();},e=>{ev("enchaîné-ko",e.message);qPlay(i);});return;}
   ev("pas prêt → chargement normal");qPlay(i);}
 AU.onended=()=>{ev("fin du son");if(inQueue())qAdvance();else stopPlay();};
 function previewFail(){if(Q.items.length&&Q.fails<3)toast("Pas d’extrait pour ce son, je passe au suivant.");else toast("Extrait indisponible.",false,true);}
@@ -1729,17 +1729,17 @@ async function startLockTest(){closeModal();toast("Je prépare 5 extraits…");
 
 /* ---------- Partager (menu Partager de l’iPhone : AirDrop, WhatsApp, Notes, Fichiers…) ---------- */
 async function shareOut({title,text,file,name,type}){
-  try{if(file&&navigator.canShare){const f=new File([file],name,{type:type||file.type||"text/plain"});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title});return true;}}
-    if(!file&&navigator.share){await navigator.share({title,text});return true;}}
+  try{if(file&&navigator.canShare){const f=new File([file],name,{type:type||file.type||"text/plain"});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title});return "partage";}}
+    if(!file&&navigator.share){await navigator.share({title,text});return "partage";}}
   catch(e){if(e&&e.name==="AbortError")return false;logErr("partage",e.message);}
-  if(text&&navigator.clipboard){try{await navigator.clipboard.writeText(text);toast("Copié : colle-le où tu veux.");return true;}catch(e){}}
-  if(file){download(file,name);toast("Fichier téléchargé.");return true;}return false;}
+  if(text&&navigator.clipboard){try{await navigator.clipboard.writeText(text);toast("Copié : colle-le où tu veux.");return "copie";}catch(e){}}
+  if(file){download(file,name);toast("Fichier téléchargé (le menu Partager n’est pas disponible ici).");return "fichier";}return false;}
 const songOf=x=>{const t=x&&x.n?T(x.n)||x:x;return t?{t:t.t,a:t.a,dz:t.dz||null,cover:t.cover||null,pop:t.pop,aid:t.aid}:null;};
 function shareList(title,list){const items=list.map(songOf).filter(x=>x&&x.t);if(!items.length)return toast("Liste vide.",false,true);
   shareOut({title,text:title+"\n\n"+items.map((x,i)=>`${i+1}. ${x.a?x.a+" - ":""}${x.t}`).join("\n")+"\n\nPréparé avec SetMate"});}
 async function shareData(){const st={...S,undo:undefined},name=`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`;
   const ok=await shareOut({title:"Sauvegarde SetMate",file:new Blob([JSON.stringify({setmate:VERSION,date:Date.now(),state:st})],{type:"application/json"}),name,type:"application/json"});
-  if(ok)toast("Sauvegarde prête. Sur l’autre appareil : Réglages, Restaurer, puis choisis ce fichier. Tes fichiers audio ne sont pas dedans.");}
+  if(ok==="partage")toast("Envoyé. Sur l’autre appareil : Réglages, Recevoir des données, puis choisis ce fichier. Tes fichiers audio ne sont pas dedans.");else if(ok==="fichier")toast("Sauvegarde téléchargée dans Fichiers. Envoie-la toi-même (AirDrop, WhatsApp), puis Recevoir des données.");}
 
 /* ---------- Enregistrer en playlist, depuis n’importe quelle liste ---------- */
 let SVI=[];
@@ -1834,7 +1834,7 @@ async function runDiag(){modal(`<h2>Diagnostic</h2><p class="hint mt2">Je teste 
   add("mediaSession" in navigator?"ok":"warn","Écran verrouillé et écouteurs","mediaSession" in navigator?"Titre et boutons disponibles. Lecture continue : à vérifier avec le test d’écoute.":"Non disponible.");
   const SRx=window.SpeechRecognition||window.webkitSpeechRecognition;add(!SRx?"warn":isIOS&&st?"warn":"ok","Reconnaissance vocale (débrief)",!SRx?"Absente : dicte avec le micro du clavier.":isIOS&&st?"Souvent indisponible dans une appli installée sur iPhone : utilise le micro du clavier.":"Disponible.");
   add(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia?"ok":"warn","Micro","Accès possible (demandé seulement quand tu l’utilises).");
-  const f=new File(["x"],"t.txt",{type:"text/plain"});add(navigator.share?"ok":"warn","Partager",navigator.share?(navigator.canShare&&navigator.canShare({files:[f]})?"Texte et fichiers (AirDrop, WhatsApp…).":"Texte seulement."):"Non : je copie à la place.");
+  const fj=new File(["{}"],"sauvegarde.json",{type:"application/json"}),jOK=!!(navigator.canShare&&navigator.canShare({files:[fj]}));add(navigator.share?(jOK?"ok":"warn"):"warn","Partager",navigator.share?(jOK?"Texte et fichier de sauvegarde (AirDrop, WhatsApp…).":"Texte seulement : la sauvegarde sera téléchargée, à envoyer toi-même."):"Non : je copie à la place.");
   add(navigator.clipboard&&navigator.clipboard.readText?"ok":"warn","Coller depuis une autre appli",navigator.clipboard&&navigator.clipboard.readText?"OK (l’iPhone te demandera de confirmer « Coller »).":"Non : colle à la main dans la case.");
   add("wakeLock" in navigator?"ok":"warn","Écran toujours allumé","wakeLock" in navigator?"Disponible (pour le futur mode soirée).":"Non disponible (iOS 18.4 ou plus nécessaire).");
   add("setAppBadge" in navigator?"ok":"warn","Pastille sur l’icône","setAppBadge" in navigator?"Disponible.":"Non disponible ici.");
@@ -1860,6 +1860,17 @@ function srOK(){const SR=window.SpeechRecognition||window.webkitSpeechRecognitio
 const NEWS={"1.6":["<b>Coller</b> (Écouter) : copie un lien Deezer ou une liste dans une autre appli, puis Coller. Aide pour Apple Music et Spotify.","<b>Enregistrer en playlist</b> et <b>Partager</b> : tendances, pépites, recherche, set, soirée, file d’écoute.","<b>Ajouter à une playlist</b> depuis le lecteur.","<b>Écouter le set</b> en entier (Préparer).","<b>Transférer mes données</b> par AirDrop (Réglages).","<b>Diagnostic</b> de ton téléphone + boîte noire des erreurs (Réglages).","Débrief : sur iPhone, dicte avec le micro du clavier."]};
 function showNews(){const n=NEWS[VERSION];if(!n)return;modal(`<h2>Nouveau dans SetMate ${VERSION}</h2><ul class="mt" style="padding-left:20px;line-height:1.7">${n.map(x=>`<li>${x}</li>`).join("")}</ul><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">C’est parti</button></div>`);}
 function checkNews(){if(S.seenV===VERSION)return;const old=S.onboarded||S.tracks.length||(S.pls||[]).length;S.seenV=VERSION;save();if(old)showNews();}
+
+/* ---------- Restauration prudente : on dit ce qui sera remplacé, on garde les fichiers de cet appareil ---------- */
+function confirmRestore(d){const st=d.state||{};return new Promise(res=>{window._rs=res;
+  modal(`<h2>Remplacer les données de cet appareil ?</h2><p class="hint mt2">Sauvegarde du ${new Date(d.date||Date.now()).toLocaleDateString("fr-FR")} : ${pl((st.tracks||[]).length||0,"son")} lus, ${pl((st.pls||[]).length,"playlist")}, ${pl((st.gigs||[]).length,"soirée")}.</p>
+   <p class="hint mt2">Ici, actuellement : ${pl(S.pls.length,"playlist")}, ${pl(S.gigs.length,"soirée")}, ${pl((S.own||[]).length,"fichier")} sur ce téléphone. <b style="color:var(--txt)">Tout ça sera remplacé</b> par la sauvegarde (sauf les fichiers audio de ce téléphone, qui restent). Pense à envoyer tes données d’ici avant si elles comptent.</p>
+   <div class="row mt" style="justify-content:flex-end;gap:8px"><button class="btn ghost" onclick="closeModal();window._rs(false)">Annuler</button><button class="btn red" onclick="closeModal();window._rs(true)">Remplacer</button></div>`);});}
+async function restoreState(d){if(!(await confirmRestore(d)))return false;const cur=S.own||[],keep=S.undo;Object.assign(S,d.state);S.undo=keep;
+  const all=[...cur,...(S.own||[])],seen=new Set(),ok=[];
+  for(const o of all){if(seen.has(o.fid))continue;seen.add(o.fid);if(await DB.get("file_"+o.fid))ok.push(o);}
+  const lost=all.filter((o,i)=>all.findIndex(x=>x.fid===o.fid)===i).length-ok.length;S.own=ok;S.pls=S.pls||[];reindex();save(true);render();
+  toast(lost>0?`Données restaurées. ${pl(lost,"fichier")} audio de la sauvegarde ne sont pas sur ce téléphone : à rajouter.`:"Données restaurées.");return true;}
 
 /* ===================== FENÊTRES, RECHERCHE, CLAVIER ===================== */
 function modal(html){$("#layer").innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal" role="dialog">${html}</div></div>`;}
