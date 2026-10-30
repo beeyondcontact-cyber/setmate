@@ -280,7 +280,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.9";
+const VERSION="1.9.1";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -950,7 +950,7 @@ async function removeCreated(sub,files,vol){for(const f of files){try{await sub.
 /* ---------- P0-1 : la version de Serato décide de ce qu’on peut écrire ----------
    Serato 3 lit `_Serato_/Subcrates`. Serato 4 et 5 ont une nouvelle bibliothèque et ignorent ces crates
    (manuel Lexicon) ; aucune voie d’import officielle en 4. On n’écrit donc rien et on n’annonce aucun succès hors Serato 3. */
-const SV_LABEL={"3":"Serato DJ Pro 3","4":"Serato DJ Pro 4","5":"Serato DJ 5 (bêta)","?":"Version inconnue"};
+const SV_LABEL={"3":"Serato DJ Pro 3","4":"Serato DJ Pro 4","5":"Serato DJ 5.0","?":"Version inconnue"};
 function askSeratoVersion(){return new Promise(res=>{
   modal(`<h2>Quelle version de Serato utilises-tu ?</h2><p class="hint mt2">Dans Serato : menu <b>Aide › À propos</b> (sur Mac : <b>Serato DJ Pro › À propos</b>). C’est important : Serato 4 a changé de bibliothèque et ne lit plus les crates écrites par d’autres logiciels.</p>
    ${S.seratoDbAge>30?`<p class="mt2" style="color:var(--orange);font-size:13px">Indice : ta base Serato 3 n’a pas changé depuis ${S.seratoDbAge} jours. Tu es peut-être passé à Serato 4.</p>`:""}
@@ -962,7 +962,7 @@ function seratoAlternatives(kind){const v=S.seratoVer||"?";
    <p class="hint mt2">${v==="?"?"Sans connaître ta version, je n’écris rien dans Serato : en Serato 4 et plus, les crates écrites par d’autres logiciels n’apparaissent pas.":"Serato 4 et plus rangent les crates dans une nouvelle bibliothèque qu’aucun autre logiciel ne peut remplir de façon officielle. Je n’écris donc rien dans Serato."}</p>
    <h3 class="mt">Ce qui marche</h3>
    ${kind==="set"?`<div class="conn"><div style="flex:1;min-width:0"><b>Un dossier à glisser dans Serato</b><div class="hint">Je copie les sons du set dans un dossier. Dans Serato, ouvre l’onglet <b>Files</b> (pas besoin du Finder), va dans ce dossier et glisse-le sur la zone <b>Crates</b> : il devient une crate. Les fichiers sont numérotés dans l’ordre du set (01, 02…) ; l’ordre obtenu dans Serato est à vérifier chez toi. Les fichiers sont copiés, pas déplacés.</div></div><button class="btn sm" onclick="closeModal();exportFolder()">Choisir</button></div>`:""}
-   <div class="conn"><div style="flex:1;min-width:0"><b>Playlist M3U8</b><div class="hint">${v==="5"?"Serato 5 annonce l’import des M3U8 : à tester chez toi.":"Pour VirtualDJ, Traktor et Serato 5."}</div></div><button class="btn sm ghost" onclick="closeModal();${kind==="set"?"exportM3U()":"exportRuleM3U()"}">Télécharger</button></div>
+   <div class="conn"><div style="flex:1;min-width:0"><b>Playlist M3U8</b><div class="hint">${v==="5"?"Serato DJ Pro 5.0 sait importer des fichiers .M3U (notes de version officielles). La méthode exacte reste à vérifier chez toi. Le fichier contient les chemins de CET ordinateur : utilise-le sur celui qui a les fichiers.":"Pour VirtualDJ et Traktor. En Serato 4, l’import M3U est signalé absent (non officiel)."}</div></div><button class="btn sm ghost" onclick="closeModal();${kind==="set"?"exportM3U()":"exportRuleM3U()"}">Télécharger</button></div>
    <div class="row mt" style="justify-content:space-between"><button class="btn ghost sm" onclick="closeModal();askSeratoVersion()">Changer de version</button><button class="btn" onclick="closeModal()">Fermer</button></div>`);}
 function exportRuleM3U(){const list=RULES.map((r,i)=>S.crates[i]?{name:r[0],items:visible().filter(x=>!x.wish).filter(r[1])}:null).filter(Boolean);
   list.forEach(c=>download(new Blob(["#EXTM3U\n"+c.items.map(x=>`#EXTINF:-1,${x.a} - ${x.t}\n/${x.path}`).join("\n")+"\n"],{type:"audio/x-mpegurl"}),`SetMate - ${safeName(c.name)}.m3u8`));
@@ -2200,7 +2200,7 @@ function crateImpossible(){const raisons=whyNoWrite();
    ${S.demo?"":`<details class="mt"><summary class="hint clk">Avancé : le fichier .crate quand même</summary><p class="hint mt2">Il ne marche que si les fichiers sont aux mêmes endroits. À copier, Serato fermé, dans <code>Musique/_Serato_/Subcrates</code>, puis relance Serato (Serato 3 seulement).</p><button class="btn ghost sm" onclick="closeModal();downloadCrateAdvanced()">Télécharger le .crate</button></details>`}
    <div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Fermer</button></div>`);}
 function downloadCrateAdvanced(){const items=setFiles();if(!items.length)return;download(new Blob([buildCrate(items.map(x=>x.path))]),`SetMate%%${safeName(S.set.name)}.crate`);toast("Fichier téléchargé : chemins de cet ordinateur uniquement.",false,true);}
-function exportM3Uwarn(){toast("Playlist téléchargée : elle contient les chemins de cet ordinateur. Serato 4 n’importe plus les M3U (signalé par des utilisateurs) : non testé ici.",false,false);}
+function exportM3Uwarn(){toast(S.seratoVer==="5"?"Playlist téléchargée. Serato DJ 5.0 peut importer les .M3U (notes officielles). Elle contient les chemins de cet ordinateur : à utiliser là où sont les fichiers.":"Playlist téléchargée : elle contient les chemins de cet ordinateur. Serato 4 n’importe plus les M3U (signalé par des utilisateurs) : non testé ici.",false,false);}
 
 /* ---------- Contrôle de compatibilité (Diagnostic) ---------- */
 function compatRows(add){const ua=navigator.userAgent,safari=/Safari/.test(ua)&&!/Chrome|Chromium|Edg|OPR/.test(ua);
