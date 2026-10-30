@@ -246,6 +246,8 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
   input.f,select.f,textarea.f{font-size:16px}
 }
 .mi.onx{color:var(--blue)}.mi sup{font-size:8px;margin-left:-3px}details summary{list-style:none}details summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
+.recbar{position:sticky;top:0;z-index:15;background:var(--win);padding:8px 0 10px;margin-top:8px;border-bottom:1px solid var(--line)}.chk{width:22px;height:22px;flex:none;accent-color:var(--blue)}
+@media (max-width:760px){.recbar{top:58px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .btn,.search,.nb,.chip,.pill,.ib,.play,.mic,.mi,.seg button{box-sizing:border-box}
 </style>
@@ -278,7 +280,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.7";
+const VERSION="1.8";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -311,7 +313,7 @@ function reindex(){byN=new Map();byPath=new Map();S.tracks.forEach(t=>{byN.set(t
 const T=n=>byN.get(n);
 let saveT=null,tracksDirty=false;
 function save(tracksToo=false){if(tracksToo)tracksDirty=true;clearTimeout(saveT);saveT=setTimeout(async()=>{
-  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge","pls","own","lsTab","seenV","am"])st[k]=S[k];
+  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge","pls","own","lsTab","seenV","am","recTab"])st[k]=S[k];
   await DB.set("state",st);if(tracksDirty){await DB.set("tracks",S.tracks);tracksDirty=false;}},400);}
 async function load(){
   await DB.open();
@@ -1134,7 +1136,7 @@ function libMatch(x){if(!x)return null;const bt=baseTitle(x.t),a=norm(x.a).split
   return S.tracks.find(t=>!t.hidden&&((x.dz&&t.dz===x.dz)||(bt.trim()&&baseTitle(t.t)===bt&&(!a||norm(t.a).includes(" "+a)))))||null;}
 function ownedTrend(x){const m=libMatch(x);return !!m&&!m.wish;}          // elle a le fichier
 const inWish=x=>{const m=libMatch(x);return !!m&&!!m.wish;};               // dans sa musique, à récupérer
-const wishes=()=>S.tracks.filter(t=>t.wish&&!t.hidden);
+const wishes=()=>S.tracks.filter(t=>t.wish&&!t.hidden&&t.stage!=="done");
 const upgrades=()=>S.tracks.filter(t=>t.upgrade&&!t.wish&&!t.hidden);
 const ONLINE_G={"Rap / Hip-hop":"rap","Musique africaine":"afrobeats","R&B":"rnb","Amapiano":"amapiano","Pop":"pop"};
 function classifyOnline(x){if(x.style)return classify(x.style,x.a);const s=(x.srcs||[]).find(s=>ONLINE_G[s]);return classify(s?ONLINE_G[s]:"",x.a);}
@@ -1189,7 +1191,7 @@ async function refreshTrends(silent){
 const VARIANTS=()=>{const y=new Date().getFullYear();return [""," "+y," new"," hits"," underground"," mix"," "+(y-1)," club"," vibes"," session"," fresh"," 2000s"];};
 async function fetchDiscBatch(style,label){
   S.disc.qi=S.disc.qi||{};S.disc.usedPl=S.disc.usedPl||[];const i=S.disc.qi[style]||0;S.disc.qi[style]=i+1;const v=VARIANTS();
-  const pls=await jsonp(`https://api.deezer.com/search/playlist?q=${encodeURIComponent((style+v[i%v.length]).trim())}&limit=12`);
+  const pls=await jsonp(`https://api.deezer.com/search/playlist?q=${encodeURIComponent((style+v[i%v.length]).trim())}&limit=12&index=${(Math.floor(i/v.length)%8)*12}`);
   const cand=(pls.data||[]).filter(p=>p.nb_tracks>=15&&!S.disc.usedPl.includes(p.id));if(!cand.length)return [];
   const pl=cand[Math.floor(Math.random()*Math.min(cand.length,6))];S.disc.usedPl.push(pl.id);if(S.disc.usedPl.length>500)S.disc.usedPl.splice(0,100);
   const d=await jsonp(`https://api.deezer.com/playlist/${pl.id}/tracks?limit=100`);
@@ -1200,7 +1202,7 @@ let discBusy=false,topUpP=null;
 /** Remplit la réserve de pépites. Si un remplissage tourne déjà, on attend le même (pas de double appel). */
 function topUpExtra(min=40){if(topUpP)return topUpP;const styles=STYLES.filter(([k])=>S.styles[k]);if(!styles.length)return Promise.resolve();
   discBusy=true;topUpP=(async()=>{try{const per=Math.max(8,Math.ceil(min/styles.length));   // chaque style a sa part de la réserve
-    for(const [k,l] of shuffle([...styles])){let tries=0;while((S.disc.extra||[]).filter(x=>x.style===l&&!libMatch(x)).length<per&&tries<2){tries++;try{S.disc.extra=[...(S.disc.extra||[]),...shuffle(await fetchDiscBatch(k,l))];}catch(e){}}}}
+    for(const [k,l] of shuffle([...styles])){let tries=0;while((S.disc.extra||[]).filter(x=>x.style===l&&!libMatch(x)).length<per&&tries<4){tries++;try{S.disc.extra=[...(S.disc.extra||[]),...shuffle(await fetchDiscBatch(k,l))];}catch(e){}}}}
     finally{discBusy=false;topUpP=null;save();}})();return topUpP;}
 function pickDisc(){const ex=S.disc.extra||[];const on=new Set(STYLES.filter(([k])=>S.styles[k]).map(x=>x[1]));
   let pool=ex.filter(x=>on.has(x.style)&&!libMatch(x)&&!(S.disc.items||[]).some(y=>y.dz===x.dz));if(!pool.length){topUpExtra();return null;}
@@ -1212,13 +1214,15 @@ function pickDisc(){const ex=S.disc.extra||[];const on=new Set(STYLES.filter(([k
 function refillDisc(n){let k=0;for(let i=0;i<n;i++){const x=pickDisc();if(!x)break;S.disc.items.push(x);k++;}return k;}
 async function loadDiscovery(silent){S.disc.items=[];if(!silent)softRender();await topUpExtra(60);refillDisc(30);S.disc.date=Date.now();save();
   if(!S.disc.items.length&&!silent)toast("Pas de pépites trouvées. Vérifie ta connexion ou choisis d’autres styles.",false,true);if(["trend","next","home"].includes(S.screen))liveRefresh();}
-async function moreDisc(){let n=refillDisc(15);if(n<15){softRender();await topUpExtra(40);n+=refillDisc(15-n);}save();liveRefresh();
-  if(!n)toast("Plus de pépites pour l’instant dans ces styles. Ajoute un style ou réessaie plus tard.",false,true);}
+async function moreDisc(){let n=refillDisc(15);
+  for(let r=0;r<4&&n<15;r++){softRender();await topUpExtra(40);n+=refillDisc(15-n);if(n<15&&r<3)await sleep(2500);}
+  save();liveRefresh();
+  if(!n)toast(!navigator.onLine?"Pas de réseau : la découverte reprendra dès que tu es connecté.":"Deezer ne m’a rien renvoyé après plusieurs essais. Réessaie dans une minute.",false,true);}
 function toggleStyle(k){S.styles[k]=S.styles[k]?0:1;save();loadDiscovery();}
 
 /* ---------- Analyse des extraits ---------- */
 async function analyzeDz(x){if(S.trendCache[x.dz])return S.trendCache[x.dz];
-  try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`);if(!d.preview)return null;
+  try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`,8000,"low");if(!d.preview)return null;
     const buf=await (await fetch(d.preview)).arrayBuffer();const r=smAnalyze(await decodeBytes(buf),30);
     if(r){S.trendCache[x.dz]={bpm:r.bpm,k:r.key,e:r.energy,kc:r.keyConf};const keys=Object.keys(S.trendCache);if(keys.length>3000)keys.slice(0,500).forEach(k=>delete S.trendCache[k]);save();return S.trendCache[x.dz];}}catch(e){}return null;}
 const anaQ=[];let anaQRun=false;
@@ -1980,6 +1984,118 @@ HELP.apple[1]+='<p class="mt2"><button class="chip" onclick="histoModal()">Mon h
 HELP.spotify[1]+='<p class="mt2"><button class="chip" onclick="histoModal()">Mes données Spotify (fichier officiel)</button></p>';
 NEWS["1.7"]=["<b>Toucher le titre</b> dans le lecteur : ouvrir le son dans <b>Apple Music</b> (avec ton abonnement), ou l’écouter en entier dans le lecteur d’Apple.","<b>Vers Apple Music</b> (dans une playlist) : envoie la liste à un raccourci de ton iPhone.","<b>Mon historique</b> (Écouter) : lis tes fichiers d’export Apple Music et Spotify, retrouve tes sons les plus écoutés, et reçois des sons du même univers."];
 
+/* ===================== 1.8 Découverte sans fin + parcours des sons en 3 étapes =====================
+   Cahier : CAHIER_RECUPERATION_DECOUVERTE_2026-10-30.md (v0.2, confirmé par Sabri).
+   ① File d'attente  →  ② À récupérer (liste d'achat)  →  ③ Récupérés.   « Fichier ici » = fichier relié (automatique). */
+
+/* ---------- Un seul compteur de requêtes Deezer pour toute l'appli (quota mesuré : ≈45 par 5 s) ---------- */
+const _jsonp=jsonp;let dzStamps=[],dzBlock=0,dzNoteT=0;
+async function dzGate(low){for(;;){const now=Date.now();if(now<dzBlock){await sleep(dzBlock-now+50);continue;}
+  dzStamps=dzStamps.filter(t=>now-t<5000);const cap=low?22:35;   // l’analyse en arrière-plan garde de la place pour ce que tu regardes
+  if(dzStamps.length<cap){dzStamps.push(now);return;}await sleep(Math.max(150,5000-(now-dzStamps[0])+30));}}
+jsonp=async function(url,ms=8000,prio){if(!/api\.deezer\.com/.test(url))return _jsonp(url,ms);
+  for(let a=0;;a++){await dzGate(prio==="low");
+    try{return await _jsonp(url,ms);}
+    catch(e){if(/quota/i.test(e.message)&&a<5){dzBlock=Date.now()+2000*Math.min(8,2**a);if(Date.now()-dzNoteT>20000){dzNoteT=Date.now();toast("Deezer demande une courte pause : je reprends tout seul.");}ev&&ev("deezer-quota","essai "+(a+1));continue;}
+      throw e;}}};
+
+/* ---------- Découverte : défilement sans fin ---------- */
+let scrT=0;
+function discNearBottom(){const m=$("#main"),mScroll=m&&m.scrollHeight>m.clientHeight+20;
+  const d=mScroll?m.scrollHeight-m.scrollTop-m.clientHeight:document.documentElement.scrollHeight-window.scrollY-window.innerHeight;return d<700;}
+function discScroll(){if(S.screen!=="trend"||S.trTab!=="decouverte"||S.search.q||discBusy||!(S.disc.items||[]).length)return;
+  if(Date.now()-scrT<1800||!discNearBottom())return;scrT=Date.now();
+  if(S.disc.items.length>600){S.disc.items=S.disc.items.slice(-450);}   // la liste reste légère au-delà de 600 : les sons vus ne reviennent pas
+  moreDisc();}
+window.addEventListener("scroll",discScroll,{passive:true});
+(()=>{const m=$("#main");if(m)m.addEventListener("scroll",discScroll,{passive:true});})();
+
+/* ---------- Étapes : File d'attente, À récupérer, Récupérés ---------- */
+const rst=t=>t.stage?(!t.wish?"done":t.stage):null;         // un fichier relié = récupéré, automatiquement
+const inStage=s=>S.tracks.filter(t=>!t.hidden&&t.stage&&rst(t)===s);
+const qList=()=>inStage("queue"),tList=()=>inStage("todo"),dList=()=>inStage("done");
+function migrateStages(){let c=0;S.tracks.forEach(t=>{if(t.wish&&!t.stage){t.stage="queue";c++;}});if(c)save(true);}
+S.recTab=S.recTab||"queue";
+const SELR=new Set();let SELM=false;
+function recMark(ns,to){const ts=ns.map(T).filter(Boolean);if(!ts.length)return;const old=ts.map(t=>({t,s:t.stage,d:t.doneAt,v:t.doneVia}));
+  ts.forEach(t=>{t.stage=to;if(to==="done"){t.doneAt=Date.now();t.doneVia="main";}else{delete t.doneAt;delete t.doneVia;}});
+  pushUndo("changement d’étape",()=>{old.forEach(o=>{o.t.stage=o.s;if(o.d)o.t.doneAt=o.d;else delete o.t.doneAt;if(o.v)o.t.doneVia=o.v;else delete o.t.doneVia;});save(true);});
+  save(true);SELR.clear();
+  toast(to==="done"?`${pl(ts.length,"son")} marqué${ts.length>1?"s":""} comme récupéré${ts.length>1?"s":""}.`:to==="todo"?`${pl(ts.length,"son")} dans « À récupérer ».`:`${pl(ts.length,"son")} remis dans la file d’attente.`,true);liveRefresh();}
+function recEmptyQueue(){const ns=qList().map(t=>t.n);if(!ns.length)return toast("La file d’attente est déjà vide.");recMark(ns,"todo");}
+function recDoneAll(from){const ns=(from==="queue"?qList():[...qList(),...tList()]).map(t=>t.n);if(!ns.length)return toast("Rien à marquer.");recMark(ns,"done");}
+function recBack(from){const ns=(from==="done"?dList().filter(t=>t.wish):tList()).map(t=>t.n);if(!ns.length)return toast("Rien à remettre.");recMark(ns,from==="done"?"todo":"queue");}
+function recTog(n,on){on?SELR.add(n):SELR.delete(n);softRender();}
+function recSelMode(on){SELM=on;SELR.clear();softRender();}
+function recSelAll(st){const cur=st==="queue"?qList():st==="todo"?tList():dList();cur.forEach(t=>SELR.add(t.n));softRender();}
+function recSelDo(act){const ns=[...SELR];if(!ns.length)return toast("Coche d’abord des sons.");
+  if(act==="done"||act==="todo"||act==="queue")return recMark(ns,act);
+  if(act==="pl"){const ts=ns.map(T).filter(Boolean);return saveAsPlaylist("À récupérer",ts);}
+  if(act==="rm"){const ts=ns.map(T).filter(t=>t&&t.wish);if(!ts.length)return toast("Seuls les sons sans fichier peuvent être retirés ici.",false,true);
+    const saved=ts.map(t=>({t,dI:S.set.ids.includes(t.n)}));ts.forEach(removeFromLib);pushUndo(`retrait de ${ts.length} sons`,()=>{saved.forEach(o=>S.tracks.push(o.t));reindex();save(true);});
+    save(true);SELR.clear();toast(`${pl(ts.length,"son")} retiré${ts.length>1?"s":""} de ta musique.`,true);liveRefresh();}}
+function recRow(t,st){const on=t.dz&&PL&&PL.u==="t"+t.n&&!AU.paused,hasF=!t.wish;
+  return `<div class="trow">${SELM?`<input type="checkbox" class="chk" ${SELR.has(t.n)?"checked":""} onchange="recTog(${t.n},this.checked)" aria-label="Sélectionner">`:""}${cover(t)}
+    <div class="tm clk" onclick="startFrom(${t.n})"><b>${esc(t.t)}</b><div class="hint">${esc(t.a)}${t.why?" · "+esc(t.why):""}</div>
+    <div class="hint">${t.bpm?Math.round(t.bpm)+" BPM · "+(t.k||"?"):"j’écoute…"} · ${hasF?'<span style="color:var(--green)">Fichier ici</span>':"sans fichier"}</div></div>
+    <button class="play ${on?"on":""}" onclick="playTrack(${t.n})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>
+    ${st!=="done"?`<button class="btn sm add" onclick="recMark([${t.n}],'done')" aria-label="Marquer comme récupéré" data-tip="Marquer comme récupéré">${svg("check",15)}</button>`:(t.wish?`<button class="mi" onclick="recMark([${t.n}],'todo')" aria-label="Remettre à récupérer" data-tip="Remettre à récupérer">${svg("refresh",14)}</button>`:"")}
+    ${t.wish?`<button class="mi" onclick="rmWish(${t.n})" aria-label="Retirer de ma musique" data-tip="Retirer de ma musique">${svg("x",14)}</button>`:""}</div>`;}
+function recView(){const q=qList(),td=tList(),dn=dList(),st=S.recTab||"queue",cur=st==="queue"?q:st==="todo"?td:dn,ug=upgrades();
+  const seg=[["queue","File d’attente",q.length],["todo","À récupérer",td.length],["done","Récupérés",dn.length]].map(([k,l,n])=>`<button style="flex:1;text-align:center" class="${st===k?"on":""}" onclick="S.recTab='${k}';SELR.clear();save();softRender()">${l} <b>${n}</b></button>`).join("");
+  const main=st==="queue"?`<button class="btn sm" onclick="recEmptyQueue()" ${q.length?"":"disabled"}>${svg("next2",14)}Vider la file vers « À récupérer »</button><button class="btn ghost sm" onclick="recDoneAll('queue')" ${q.length?"":"disabled"}>Tout marquer récupéré</button>`
+    :st==="todo"?`<button class="btn sm" onclick="recDoneAll('todo')" ${td.length?"":"disabled"}>${svg("check",14)}Tout marquer récupéré</button><button class="btn ghost sm" onclick="recBack('todo')" ${td.length?"":"disabled"}>Tout remettre en file</button>`
+    :`<button class="btn ghost sm" onclick="recBack('done')" ${dn.some(t=>t.wish)?"":"disabled"}>Remettre à récupérer les sons sans fichier</button>`;
+  const selbar=SELM?`<span class="hint" style="align-self:center">${SELR.size} coché${SELR.size>1?"s":""}</span><button class="chip" onclick="recSelAll('${st}')">Tout cocher</button>
+     ${st!=="done"?`<button class="btn sm" onclick="recSelDo('done')">${svg("check",14)}Récupéré</button>`:""}${st==="queue"?`<button class="btn ghost sm" onclick="recSelDo('todo')">→ À récupérer</button>`:""}${st==="todo"?`<button class="btn ghost sm" onclick="recSelDo('queue')">← File</button>`:""}
+     <button class="btn ghost sm" onclick="recSelDo('pl')">${svg("plplus",14)}Playlist</button><button class="btn ghost sm" onclick="recSelDo('rm')">Retirer</button><button class="chip on" onclick="recSelMode(false)">Terminé</button>`
+    :`${main}<button class="chip" onclick="recSelMode(true)">Sélectionner</button>`;
+  const empty=st==="queue"?"La file d’attente est vide. Appuie sur <b>+</b> dans Tendances ou Découverte : les sons arrivent ici.":st==="todo"?"Rien à récupérer. Vide ta file d’attente : les sons que tu as choisis arrivent ici.":"Aucun son récupéré pour l’instant. Marque un son avec ✓ ou dépose son fichier dans Téléchargements.";
+  const exp=st==="queue"?"Sons repérés, pas encore décidés.":st==="todo"?"Les sons que tu as choisis : à obtenir par Apple Music ou un autre canal payant.":"Sons obtenus, utilisables officiellement dans tes sets. Un son est récupéré dès que tu le marques ou que son fichier arrive.";
+  return `<div class="recbar"><div class="seg" style="display:flex;width:100%">${seg}</div><div class="row mt2" style="gap:8px;flex-wrap:wrap">${selbar}</div></div>
+    <p class="hint mt2">${exp}${st!=="done"&&!(H.dl&&PERM.dl==="granted")?" Connecte Téléchargements (Réglages) pour que « Fichier ici » se mette à jour tout seul.":""}</p>
+    <div class="card mt2" style="padding:4px 14px">${cur.length?cur.map(t=>recRow(t,st)).join(""):`<div class="empty">${empty}</div>`}</div>
+    ${st==="queue"&&ug.length?`<h3 class="mt">À remplacer <span class="hint" style="font-weight:400">· meilleure qualité</span></h3><div class="card mt2" style="padding:4px 14px">${ug.map(t=>`<div class="trow">${cover(t)}<div class="tm clk" onclick="startFrom(${t.n})"><b>${esc(t.t)}</b><div class="hint">${esc(t.a)}</div></div><button class="mi" onclick="clearUpgrade(${t.n})" aria-label="Retirer">${svg("x",14)}</button></div>`).join("")}</div>`:""}`;}
+
+/* ---------- Le « + » : Ma musique (file d'attente) ET playlist « Mes pépites » ---------- */
+function defPl(create=true){let p=(S.pls||[]).find(x=>x.id==="pepites");if(!p&&create){p={id:"pepites",name:"Mes pépites",src:"setmate",date:Date.now(),items:[],cover:null};S.pls.push(p);}return p;}
+function addToDefPl(list){const p=defPl(),add=list.filter(x=>x&&x.dz&&!p.items.some(y=>y.dz===x.dz)).map(x=>({t:x.t,a:x.a,dz:x.dz,cover:x.cover||null,pop:x.pop}));p.items.unshift(...add);return add;}
+function withDefPlUndo(add){const u=S.undo[S.undo.length-1];if(u&&add.length){const f=u.fn;u.fn=()=>{f();const p=defPl(false);if(p)p.items=p.items.filter(y=>!add.includes(y));save();};}}
+const _addToLib=addToLib;addToLib=function(x,src){const r=_addToLib(x,src);if(r&&r.isNew&&r.t.wish&&!r.t.stage)r.t.stage="queue";return r;};
+const _addIdea=addIdea;addIdea=function(dz){const x=findDz(dz),had=!!(x&&libMatch(x));_addIdea(dz);if(x&&!had){const add=addToDefPl([x]);withDefPlUndo(add);save();}};
+const _addAll=addAll;addAll=function(kind){const n0=S.nextN;_addAll(kind);const added=S.tracks.filter(t=>t.n>=n0&&t.wish);if(added.length){const add=addToDefPl(added);withDefPlUndo(add);save();toast(`${pl(added.length,"son")} ajouté${added.length>1?"s":""} à ta musique et à « Mes pépites ».`,true);}};
+const _mergeInto=mergeInto;mergeInto=function(from,to){const st=from&&from.stage;const r=_mergeInto(from,to);if(st&&to){to.stage="done";to.doneAt=Date.now();to.doneVia="fichier";}return r;};
+
+/* ---------- Sélection multiple dans Tendances et Découverte ---------- */
+let SELD=new Set(),SELT=false;
+const _trRow=trRow;
+trRow=function(x,showPos){let h=_trRow(x,showPos);const m=libMatch(x);
+  if(m&&m.stage&&h.includes("✓ Ajouté")){const s=rst(m);h=h.replace("✓ Ajouté",s==="done"?"✓ Récupéré":s==="todo"?"✓ À récupérer":"✓ Dans ta file");}
+  if(!SELT)return h;return h.replace('<div class="trow">',`<div class="trow"><input type="checkbox" class="chk" ${SELD.has(x.dz)?"checked":""} onchange="selTog(${x.dz},this.checked)" aria-label="Sélectionner">`);};
+function selTog(dz,on){on?SELD.add(dz):SELD.delete(dz);softRender();}
+function selMode(on){SELT=on;SELD.clear();softRender();}
+function selAll(){const k=S.search.q?"search":S.trTab==="decouverte"?"disc":"moment";listOf(k)[1].forEach(x=>SELD.add(x.dz));softRender();}
+function selItems(){return [...SELD].map(findDz).filter(Boolean);}
+function selToPl(){const it=selItems();if(!it.length)return toast("Coche d’abord des sons.");saveAsPlaylist("Sélection du "+new Date().toLocaleDateString("fr-FR"),it);}
+function selAdd(){const it=selItems();if(!it.length)return toast("Coche d’abord des sons.");const added=[];for(const x of it){const {t,isNew}=addToLib(x,S.trTab==="decouverte"?"decouverte":"tendance");if(isNew)added.push(t);}
+  const add=addToDefPl(added);pushUndo(`ajout de ${added.length} sons`,()=>{added.forEach(removeFromLib);const p=defPl(false);if(p)p.items=p.items.filter(y=>!add.includes(y));save(true);});
+  save(true);toast(added.length?`${pl(added.length,"son")} ajouté${added.length>1?"s":""} à ta musique et à « Mes pépites ».`:"Tout est déjà dans ta musique.",!!added.length);SELD.clear();liveRefresh();}
+function selBar(){if(!SELT)return `<div class="row mt2"><button class="chip" onclick="selMode(true)">☑ Sélectionner plusieurs</button></div>`;
+  return `<div class="recbar"><div class="row" style="gap:8px;flex-wrap:wrap"><span class="hint" style="align-self:center">${SELD.size} coché${SELD.size>1?"s":""}</span><button class="chip" onclick="selAll()">Tout cocher</button><button class="btn sm" onclick="selAdd()">${svg("plus",14)}Ma musique + Mes pépites</button><button class="btn ghost sm" onclick="selToPl()">${svg("plplus",14)}Autre playlist</button><button class="chip on" onclick="selMode(false)">Terminé</button></div></div>`;}
+
+/* ---------- Branchements des vues ---------- */
+const _vTrend2=VIEWS.trend;
+VIEWS.trend=()=>{let h=_vTrend2();const i=h.indexOf('class="seg mt"');if(i<0)return h;const j=h.indexOf("</button></div>",i)+"</button></div>".length,k=h.indexOf('<p class="hint mt">Source : Deezer');
+  if(S.trTab==="liste"&&k>j)return h.slice(0,j)+recView()+h.slice(k);
+  if(S.trTab==="decouverte"||S.trTab==="moment")h=h.slice(0,j)+selBar()+h.slice(j);
+  if(S.trTab==="decouverte"&&Date.now()<dzBlock)h=h.replace('<p class="hint mt">Des sons','<p class="hint mt" style="color:var(--orange)">Deezer demande une courte pause, je reprends tout seul.</p><p class="hint mt">Des sons');
+  return h;};
+const _vHome2=VIEWS.home;
+VIEWS.home=()=>{const h=_vHome2(),a=qList().length+tList().length,r=dList().length;if(!a&&!r)return h;
+  return h+`<div class="grid g2 mt" style="gap:10px"><div class="card clk" onclick="S.trTab='liste';S.recTab='${qList().length?"queue":"todo"}';save();go('trend')"><div class="hint">À récupérer</div><div class="big">${a}</div><div class="hint">${qList().length} en file · ${tList().length} à obtenir</div></div>
+    <div class="card clk" onclick="S.trTab='liste';S.recTab='done';save();go('trend')"><div class="hint">Récupérés</div><div class="big" style="color:var(--green)">${r}</div><div class="hint">prêts pour tes sets</div></div></div>`;};
+NEWS["1.8"]=["<b>Découverte sans fin</b> : plus d’erreur quand Deezer sature, SetMate attend et reprend tout seul. La liste se prolonge quand tu descends.","<b>À récupérer en 3 étapes</b> : File d’attente, À récupérer, Récupérés. Boutons tout en haut : <b>Vider la file</b>, <b>Tout marquer récupéré</b>, sélection multiple.","<b>Le +</b> met le son dans Ma musique et dans la playlist <b>Mes pépites</b>.","<b>Sélectionner plusieurs</b> sons (Tendances, Découverte) pour les ajouter d’un coup."];
+
 /* ===================== FENÊTRES, RECHERCHE, CLAVIER ===================== */
 function modal(html){$("#layer").innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal" role="dialog">${html}</div></div>`;}
 function closeModal(){$("#layer").innerHTML="";}
@@ -2002,7 +2118,7 @@ document.addEventListener("keydown",e=>{const typing=/INPUT|TEXTAREA|SELECT/.tes
 window.addEventListener("focus",()=>{if(H.dl&&PERM.dl==="granted")scanDl();});
 
 /* ===================== DÉMARRAGE ===================== */
-(async()=>{await load();await loadLog();
+(async()=>{await load();await loadLog();migrateStages();
   if(H.serato&&PERM.serato==="granted"&&!S.demo)await loadSerato(false);
   render();startWatch();checkNews();
   if(S.trends.date<lastThursday())await refreshTrends(true);else analyzeQueue(S.trends.items);
