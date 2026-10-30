@@ -278,7 +278,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.6.1";
+const VERSION="1.7";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -311,7 +311,7 @@ function reindex(){byN=new Map();byPath=new Map();S.tracks.forEach(t=>{byN.set(t
 const T=n=>byN.get(n);
 let saveT=null,tracksDirty=false;
 function save(tracksToo=false){if(tracksToo)tracksDirty=true;clearTimeout(saveT);saveT=setTimeout(async()=>{
-  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge","pls","own","lsTab","seenV"])st[k]=S[k];
+  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge","pls","own","lsTab","seenV","am"])st[k]=S[k];
   await DB.set("state",st);if(tracksDirty){await DB.set("tracks",S.tracks);tracksDirty=false;}},400);}
 async function load(){
   await DB.open();
@@ -1475,7 +1475,7 @@ document.addEventListener("touchend",function unlock(){if(PL)return;AU.muted=tru
 function renderPlayer(){const p=$("#player");p.style.display=(!PL&&MOBILE)?"none":"";mediaSync();
   if(!PL){p.innerHTML=`<span class="hint">Clique ▶ sur un son pour l’écouter${H.music&&PERM.music==="granted"?" (tes fichiers)":" (extraits Deezer, ou tes fichiers si le dossier Musique est connecté)"}.</span><div class="tsp"></div>${Q.items.length?`<button class="chip" onclick="qToggle()">Reprendre la file (${Q.items.length})</button>`:`<span class="kbd">Espace</span>`}`;return;}
   const x=PL.x,q=inQueue();
-  p.innerHTML=`${cover(x)}<div class="info"><b>${esc(x.t)}</b><small>${esc(x.a)}${x.bpm?" · "+Math.round(x.bpm)+" BPM":""} · ${esc(PL.src)}${q?` · ${Q.i+1}/${Q.items.length}`:""}</small></div>
+  p.innerHTML=`${cover(x)}<div class="info clk" onclick="trackMenu()"><b>${esc(x.t)}</b><small>${esc(x.a)}${x.bpm?" · "+Math.round(x.bpm)+" BPM":""} · ${esc(PL.src)}${q?` · ${Q.i+1}/${Q.items.length}`:""}</small></div>
     ${q?`<button class="mi" onclick="qPrev()" aria-label="Son précédent">${svg("prev",16)}</button><button class="play on" onclick="qToggle()" aria-label="${AU.paused?"Lecture":"Pause"}">${svg(AU.paused?"play":"pause",12)}</button><button class="mi" onclick="qNext()" aria-label="Son suivant">${svg("next2",16)}</button>`
       :`<button class="play on" onclick="stopPlay()" aria-label="Arrêter">${svg("pause",12)}</button>`}
     <div class="pbar clk" onclick="seekBar(event,this)"><i id="pbar"></i></div>
@@ -1640,7 +1640,7 @@ function plDetail(p){const busy=plBusy&&plBusy.id===p.id,dzN=p.items.filter(x=>x
   return `<button class="chip" onclick="S.plOpen=null;softRender()">‹ Mes playlists</button>
     <div class="row between mt"><div><h1 style="margin:0">${esc(p.name)}</h1><p class="sub" style="margin:4px 0 0">${pl(p.items.length,"son")} · ${esc(PLSRC[p.src]||p.src)}${busy?` · je retrouve les sons : ${plBusy.done}/${plBusy.total}`:""}</p></div></div>
     <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="plPlay('${p.id}',0)">${svg("play",13)}Écouter</button><button class="btn ghost" onclick="plPlay('${p.id}',0,true)">${svg("shuf",14)}Aléatoire</button>
-      <button class="btn ghost" onclick="plSimilar('${p.id}')" ${sb||!p.items.length?"disabled":""}>${svg("radio",14)}${sb?"Je cherche…":"Sons du même univers"}</button>
+      <button class="btn ghost" onclick="plSimilar('${p.id}')" ${sb||!p.items.length?"disabled":""}>${svg("radio",14)}${sb?"Je cherche…":"Sons du même univers"}</button><button class="btn ghost" onclick="sendToApple('${p.id}')">${svg("apple",14)}Vers Apple Music</button>
       ${toAdd?`<button class="btn ghost" onclick="plAddAll('${p.id}')">${svg("plus",14)}Tout ajouter à ma musique (${toAdd})</button>`:""}</div>
     ${sim.length?`<h3 class="mt">Pour enrichir cette playlist</h3><p class="hint">Même univers, les moins connus d’abord. <b style="color:var(--txt)">+</b> : dans ta musique. <b style="color:var(--txt)">→</b> : dans cette playlist.</p>
       <div class="card mt2" style="padding:4px 14px">${sim.map(x=>trRow(x,false).replace(/<\/div>\s*$/,`<button class="mi" onclick="plSimAdd('${p.id}',${x.dz})" aria-label="Ajouter à la playlist" data-tip="Dans cette playlist">→</button></div>`)).join("")}</div>`:""}
@@ -1664,7 +1664,7 @@ VIEWS.listen=()=>{const tab=S.lsTab||"pls",p=S.plOpen&&plGet(S.plOpen);
       <div class="card mt2" style="padding:4px 14px">${Q.items.map((it,i)=>{const l=qLabel(it),cur=i===Q.i;return `<div class="trow">${cover(l)}<div class="tm clk" onclick="qPlay(${i})"><b style="${cur?"color:var(--blue)":""}">${esc(l.t)}</b><div class="hint">${esc(l.a||"")}${cur?" · en cours":""}</div></div></div>`;}).join("")}</div>`
       :`<div class="card mt"><div class="empty">La file est vide. Lance une playlist, tes fichiers ou une radio (bouton radio du lecteur).</div></div>`);}
   const pls=S.pls||[];
-  return head+`<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="pasteImport()">${svg("paste",15)}Coller un lien ou une liste</button><button class="btn ghost" onclick="importPlaylist()">${svg("plus",15)}Autres façons</button></div>
+  return head+`<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="pasteImport()">${svg("paste",15)}Coller un lien ou une liste</button><button class="btn ghost" onclick="importPlaylist()">${svg("plus",15)}Autres façons</button><button class="btn ghost" onclick="histoModal()">${svg("hist",15)}Mon historique</button></div>
     <div class="card mt" style="padding:4px 14px">${pls.length?pls.map(plCard).join(""):`<div class="empty">Importe une playlist (lien Deezer, liste copiée ou fichier) pour l’écouter ici et y trouver de nouveaux sons.</div>`}</div>`;};
 
 /* ===================== 1.6 « système D » : coller, enregistrer en playlist, partager, transférer, diagnostic ===================== */
@@ -1872,6 +1872,113 @@ async function restoreState(d){if(!(await confirmRestore(d)))return false;const 
   for(const o of all){if(seen.has(o.fid))continue;seen.add(o.fid);if(await DB.get("file_"+o.fid))ok.push(o);}
   const lost=all.filter((o,i)=>all.findIndex(x=>x.fid===o.fid)===i).length-ok.length;S.own=ok;S.pls=S.pls||[];reindex();save(true);render();
   toast(lost>0?`Données restaurées. ${pl(lost,"fichier")} audio de la sauvegarde ne sont pas sur ce téléphone : à rajouter.`:"Données restaurées.");return true;}
+
+/* ===================== 1.7 Liens avec Apple Music et Spotify, sans compte développeur =====================
+   - Retrouver un son dans Apple Music (API gratuite iTunes Search) : ouvrir dans Musique, lecteur Apple intégré.
+   - Envoyer une playlist vers Apple Music par un raccourci iPhone (presse-papiers + shortcuts://).
+   - Importer son historique et ses playlists depuis les fichiers d'export officiels d'Apple et de Spotify.
+   Rien n'est envoyé à un serveur : les fichiers sont lus sur l'appareil. */
+Object.assign(IC,{apple:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',hist:'<path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>'});
+S.am=S.am||{};
+const AMC="fr";
+
+/* ---------- Retrouver un son dans Apple Music ---------- */
+const amKey=x=>norm((x.a||"")+" "+(x.t||"")).trim();
+let amLast=0,amChain=Promise.resolve();
+function amScore(x,it){const T0=norm(baseTitle(x.t)).trim(),tt=norm(baseTitle(it.trackName)).trim(),A0=norm(String(x.a||"").split(/,|&| feat/i)[0]).trim(),aa=norm(it.artistName).trim();let s=0;
+  if(tt===T0)s+=3;else if(tt&&(tt.includes(T0)||T0.includes(tt)))s+=2;else if(T0&&tt.includes(T0.split(" ")[0]))s+=1;
+  if(A0){if(aa===A0||aa.includes(A0))s+=3;else if(aa&&(aa.includes(A0.split(" ")[0])||A0.includes(aa)))s+=2;}else s+=1;return s;}
+/** Une recherche toutes les 3,2 s : Apple limite à environ 20 par minute. Le résultat (même « introuvable ») est gardé. */
+function amMatch(x){const k=amKey(x);if(!k)return Promise.resolve(null);if(S.am[k]!==undefined)return Promise.resolve(S.am[k]);
+  const run=amChain.then(async()=>{if(S.am[k]!==undefined)return S.am[k];const wait=3200-(Date.now()-amLast);if(wait>0)await sleep(wait);amLast=Date.now();
+    const q=encodeURIComponent((String(x.a||"").split(/,|&| feat/i)[0]+" "+String(x.t||"").replace(/\(.*?\)|\[.*?\]/g,"")).trim());
+    const r=await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=6&country=${AMC}`);if(!r.ok)throw new Error("Apple a répondu "+r.status+" (trop de recherches ? attends une minute)");
+    const d=await r.json();let best=null,bs=0;for(const it of d.results||[]){const s=amScore(x,it);if(s>bs){bs=s;best=it;}}
+    const m=best&&bs>=(x.a?4:3)?{id:best.trackId,coll:best.collectionId,url:best.trackViewUrl,t:best.trackName,a:best.artistName}:null;
+    S.am[k]=m;if(Object.keys(S.am).length>600){for(const kk of Object.keys(S.am).slice(0,100))delete S.am[kk];}save();return m;});
+  amChain=run.catch(()=>{});return run;}
+
+/* ---------- Menu du son en cours (toucher le titre dans le lecteur) ---------- */
+let TM=null;
+function trackMenu(){if(!PL)return;TM=PL.x;
+  modal(`<h2>${esc(TM.t)}</h2><p class="hint">${esc(TM.a||"")}</p><div class="mt" style="display:grid;gap:8px">
+   <button class="btn" onclick="openAM()">${svg("apple",15)}Ouvrir dans Apple Music</button>
+   <button class="btn ghost" onclick="embedAM()">Écouter en entier avec mon abonnement</button>
+   <button class="btn ghost" onclick="closeModal();addToPlaylist(songOf(TM))">${svg("plplus",15)}Ajouter à une playlist</button>
+   <button class="btn ghost" onclick="closeModal();startRadio()">${svg("radio",15)}Radio autour de ce son</button>
+   <button class="btn ghost" onclick="closeModal();shareList(TM.t,[TM])">${svg("share",15)}Partager</button></div>
+   <p class="hint mt2">Apple Music s’ouvre avec ton abonnement. SetMate ne lit jamais la musique d’Apple lui-même.</p>`);}
+async function openAM(){if(!TM)return;toast("Je cherche dans Apple Music…");
+  try{const m=await amMatch(TM);if(!m)return toast("Pas trouvé dans Apple Music (orthographe ?).",false,true);closeModal();location.assign(m.url);}
+  catch(e){toast(esc(e.message),false,true);}}
+async function embedAM(){if(!TM)return;toast("Je cherche dans Apple Music…");
+  try{const m=await amMatch(TM);if(!m)return toast("Pas trouvé dans Apple Music.",false,true);
+    modal(`<h2>${esc(m.t)}</h2><p class="hint">${esc(m.a)}</p><iframe class="mt" style="width:100%;height:175px;border:0;border-radius:12px;background:#1b1b21" allow="autoplay *; encrypted-media *; clipboard-write" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/${AMC}/album/_/${m.coll}?i=${m.id}"></iframe>
+      <p class="hint mt2">Appuie sur « Connexion » dans le lecteur : avec ton abonnement Apple Music, le son passe en entier. Sans connexion : extrait de 30 s. <b>À vérifier sur ton iPhone.</b></p>
+      <div class="row mt" style="justify-content:flex-end;gap:8px"><button class="btn ghost" onclick="closeModal()">Fermer</button><button class="btn" onclick="location.assign('${m.url}')">Ouvrir dans Musique</button></div>`);}
+  catch(e){toast(esc(e.message),false,true);}}
+
+/* ---------- Envoyer une playlist vers Apple Music (raccourci iPhone) ---------- */
+const SC_NAME="SetMate Apple Music";
+async function sendToApple(id){const p=plGet(id);if(!p||!p.items.length)return;const txt=p.items.map(x=>(x.a?x.a+" - ":"")+x.t).join("\n");let ok=false;
+  try{await navigator.clipboard.writeText(txt);ok=true;}catch(e){}
+  modal(`<h2>Envoyer vers Apple Music</h2><p class="hint mt2">« ${esc(p.name)} » · ${pl(p.items.length,"son")}. ${ok?"<b style='color:var(--green)'>La liste est copiée.</b>":"Copie automatique impossible : touche « Copier la liste »."}</p>
+   <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="location.href='shortcuts://run-shortcut?name=${encodeURIComponent(SC_NAME)}&input=clipboard'">Lancer mon raccourci</button><button class="btn ghost" onclick="plExport('${p.id}','copy')">Copier la liste</button></div>
+   <p class="hint mt2">Le bouton lance le raccourci « ${SC_NAME} » de ton iPhone avec la liste copiée. Il n’existe pas encore : on le construit ensemble (une seule fois).</p>
+   <details class="mt"><summary class="hint clk">Recette du raccourci (non testée)</summary><div class="banner mt2"><b>Non testée.</b> Je l’ai écrite sans pouvoir l’essayer. Les actions de Raccourcis peuvent se comporter autrement. Dis-moi ce qui coince, on corrige.</div>
+   <ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Dans <b>Musique</b>, crée une playlist vide nommée <b>SetMate</b> (certains rapports disent que l’action d’ajout ne marche que sur une playlist qui existe déjà).</li><li>Dans <b>Raccourcis</b>, nouveau raccourci nommé <b>${SC_NAME}</b>.</li><li>Actions : <b>Obtenir le presse-papiers</b>, puis <b>Diviser le texte</b> (par nouvelles lignes), puis <b>Répéter avec chaque élément</b>.</li><li>Dans la répétition : <b>Rechercher dans l’iTunes Store</b> (ou <b>Rechercher de la musique</b>) avec l’élément répété, limite 1, puis <b>Ajouter à la playlist SetMate</b>.</li></ol></details>`);}
+
+/* ---------- Historique et playlists depuis les exports officiels ---------- */
+function histoModal(){modal(`<h2>Mon historique et mes playlists</h2><p class="hint mt2">Apple et Spotify te donnent gratuitement un fichier de toutes tes données. SetMate le lit <b>sur ton téléphone</b> (rien n’est envoyé) et en tire tes sons les plus écoutés, puis te propose des sons du même univers.</p>
+  <details class="mt" open><summary class="hint clk">Apple Music</summary><ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Sur <b>privacy.apple.com</b>, connecte-toi, « Demander une copie de vos données », coche <b>Apple Media Services</b> (il contient Apple Music).</li><li>Apple prévient par e-mail : compte 4 à 7 jours.</li><li>Télécharge le .zip, décompresse-le dans <b>Fichiers</b>. Dans le dossier « Apple Music Activity », prends le fichier <b>Play Activity</b> ou <b>Play History Daily Tracks</b> (.csv).</li></ol><p class="hint">Les noms de fichiers viennent de guides non officiels et peuvent changer : regarde dans ton dossier.</p></details>
+  <details class="mt"><summary class="hint clk">Spotify</summary><ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Sur <b>spotify.com/account/privacy</b>, « Télécharger vos données » : <b>Données du compte</b> (quelques jours) pour tes playlists et l’historique récent, <b>Historique de lecture étendu</b> pour tout (jusqu’à 30 jours).</li><li>Décompresse le .zip dans Fichiers.</li><li>Prends <b>Playlist1.json</b> (tes playlists) et <b>StreamingHistory_music_0.json</b> ou les fichiers « Streaming_History_Audio… » (historique).</li></ol></details>
+  <p class="hint mt2">Fichier .zip ? Appuie longuement dessus dans Fichiers, puis <b>Décompresser</b>. Tu peux choisir plusieurs fichiers d’un coup.</p>
+  <div class="row mt" style="justify-content:flex-end;gap:8px"><button class="btn ghost" onclick="closeModal()">Fermer</button><button class="btn" onclick="closeModal();importHistoryFile()">Choisir les fichiers</button></div>`);}
+function importHistoryFile(){const i=$("#fileIn");i.accept=".csv,.json,.txt,.tsv";i.multiple=true;
+  i.onchange=async()=>{const fs=[...i.files];i.value="";i.multiple=false;if(!fs.length)return;
+    const plays=new Map(),pls=[];let nFiles=0,skipped=[];
+    for(const f of fs){if(f.size>80*1048576){skipped.push(f.name+" (trop lourd)");continue;}
+      try{const b=new Uint8Array(await f.arrayBuffer()),enc=b[0]===0xFF&&b[1]===0xFE?"utf-16le":"utf-8",r=parseHistory(new TextDecoder(enc).decode(b),f.name);
+        if(!r.plays.length&&!r.playlists.length){skipped.push(f.name);continue;}nFiles++;
+        for(const p of r.plays){const k=norm(p.a+" "+p.t).trim(),c=plays.get(k)||{t:p.t,a:p.a,n:0};c.n++;plays.set(k,c);}
+        pls.push(...r.playlists);}
+      catch(e){skipped.push(f.name+" ("+e.message+")");logErr("historique",e.message,f.name);}}
+    if(!nFiles)return toast("Aucun son reconnu dans ces fichiers : "+(skipped.join(", ")||"vide")+". Regarde l’aide « Mon historique ».",false,true);
+    const top=[...plays.values()].sort((x,y)=>y.n-x.n).slice(0,100);let made=0;
+    for(const p of pls){const its=[],seen=new Set();for(const x of p.items){const k=norm(x.a+" "+x.t);if(x.t&&!seen.has(k)){seen.add(k);its.push({t:x.t,a:x.a});}}
+      if(its.length){S.pls.push({id:"p"+Date.now().toString(36)+made,name:p.name||"Playlist importée",src:"fichier",date:Date.now(),items:its,cover:null});made++;}}
+    let hp=null;if(top.length){hp={id:"h"+Date.now().toString(36),name:"Mes sons les plus écoutés",src:"historique",date:Date.now(),items:top.map(x=>({t:x.t,a:x.a,plays:x.n})),cover:null};S.pls.unshift(hp);}
+    save();S.lsTab="pls";S.plOpen=hp?hp.id:null;go("listen");
+    toast(`${top.length?pl([...plays.values()].reduce((a,b)=>a+b.n,0),"écoute")+" lues, "+pl(plays.size,"son")+" différents. ":""}${made?pl(made,"playlist")+" importée"+(made>1?"s":"")+".":""}${skipped.length?" Ignoré : "+skipped.join(", ")+".":""}`);
+    if(hp){plMatch(hp);for(let k=0;k<400&&plBusy;k++)await sleep(500);if(!plSimBusy.has(hp.id))plSimilar(hp.id);}};
+  i.click();}
+/** Lit un export Apple (CSV) ou Spotify (JSON). Retourne {plays:[{t,a}], playlists:[{name,items}]}. */
+function parseHistory(text,name){const out={plays:[],playlists:[]},t=String(text||"").replace(/^﻿/,"").trim();if(!t)return out;
+  if(t[0]==="["||t[0]==="{"){let o;try{o=JSON.parse(t);}catch(e){throw new Error("JSON illisible");}
+    const arr=Array.isArray(o)?o:null;
+    if(arr){for(const e of arr){if(!e||typeof e!=="object")continue;
+      const tn=e.trackName||e.master_metadata_track_name,an=e.artistName||e.master_metadata_album_artist_name,ms=e.msPlayed!=null?e.msPlayed:e.ms_played;
+      if(tn&&(ms==null||ms>=30000))out.plays.push({t:tn,a:an||""});}}
+    const lists=o&&o.playlists;if(Array.isArray(lists))for(const p of lists){const items=[];for(const it of p.items||[]){const tr=it.track||it;const tn=tr.trackName||tr.track_name,an=tr.artistName||tr.artist_name;if(tn)items.push({t:tn,a:an||""});}
+      if(items.length)out.playlists.push({name:p.name,items});}
+    return out;}
+  const first=t.slice(0,t.indexOf("\n")>0?t.indexOf("\n"):200),sep=first.includes("\t")?"\t":(first.split(";").length>first.split(",").length?";":",");
+  const lines=t.split(/\r\n|\r|\n/).filter(Boolean),head=splitRow(lines[0],sep).map(c=>c.toLowerCase().trim());
+  const col=re=>head.findIndex(c=>re.test(c)),ti=col(/^(song name|track name|trackname|title|titre|name|nom)$/),ai=col(/^(artist name|artistname|artist|artiste|album artist)$/),di=col(/^(track description)$/),du=col(/(play duration|ms played|duration milliseconds|duration)/);
+  if(ti<0&&di<0){/* texte libre : seules les lignes « Artiste - Titre » comptent, un mot seul n’est pas un son */for(const x of parseList(t))if(x.a)out.plays.push(x);return out;}
+  for(let i=1;i<lines.length;i++){const r=splitRow(lines[i],sep);let tt="",aa="";
+    if(ti>=0){tt=(r[ti]||"").trim();aa=ai>=0?(r[ai]||"").trim():"";}else{const m=parseName(r[di]||"");tt=m.t;aa=m.a;}
+    if(!tt)continue;if(du>=0){const ms=parseInt(r[du],10);if(!isNaN(ms)&&ms<30000)continue;}
+    out.plays.push({t:tt,a:aa});}
+  return out;}
+
+/* ---------- Branchements ---------- */
+const _vListen=VIEWS.listen;
+VIEWS.listen=()=>{const p=S.plOpen&&plGet(S.plOpen);if(p&&!plBusy&&p.items.some(x=>!x.dz&&!x.miss))setTimeout(()=>plMatch(p),60);return _vListen();};
+/* aides : les exports officiels sont plus fiables que les outils tiers */
+HELP.apple[1]+='<p class="mt2"><button class="chip" onclick="histoModal()">Mon historique Apple Music (fichier officiel)</button></p>';
+HELP.spotify[1]+='<p class="mt2"><button class="chip" onclick="histoModal()">Mes données Spotify (fichier officiel)</button></p>';
+NEWS["1.7"]=["<b>Toucher le titre</b> dans le lecteur : ouvrir le son dans <b>Apple Music</b> (avec ton abonnement), ou l’écouter en entier dans le lecteur d’Apple.","<b>Vers Apple Music</b> (dans une playlist) : envoie la liste à un raccourci de ton iPhone.","<b>Mon historique</b> (Écouter) : lis tes fichiers d’export Apple Music et Spotify, retrouve tes sons les plus écoutés, et reçois des sons du même univers."];
 
 /* ===================== FENÊTRES, RECHERCHE, CLAVIER ===================== */
 function modal(html){$("#layer").innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal" role="dialog">${html}</div></div>`;}
