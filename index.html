@@ -8,6 +8,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SetMate">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <meta name="description" content="SetMate, l’assistant DJ : bibliothèque Serato, son suivant, tendances, débrief vocal.">
 <title>SetMate</title>
 <style>
@@ -242,6 +245,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
   .mic{width:112px;height:112px}
   input.f,select.f,textarea.f{font-size:16px}
 }
+.mi.onx{color:var(--blue)}.mi sup{font-size:8px;margin-left:-3px}details summary{list-style:none}details summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .btn,.search,.nb,.chip,.pill,.ib,.play,.mic,.mi,.seg button{box-sizing:border-box}
 </style>
@@ -274,7 +278,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.4";
+const VERSION="1.5";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -307,7 +311,7 @@ function reindex(){byN=new Map();byPath=new Map();S.tracks.forEach(t=>{byN.set(t
 const T=n=>byN.get(n);
 let saveT=null,tracksDirty=false;
 function save(tracksToo=false){if(tracksToo)tracksDirty=true;clearTimeout(saveT);saveT=setTimeout(async()=>{
-  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge"])st[k]=S[k];
+  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge","pls","own","lsTab"])st[k]=S[k];
   await DB.set("state",st);if(tracksDirty){await DB.set("tracks",S.tracks);tracksDirty=false;}},400);}
 async function load(){
   await DB.open();
@@ -511,16 +515,16 @@ function pendingDeb(){return pastGigs().filter(g=>!g.deb&&g.type!=="Live / conte
 function renderNav(){
   const v=valQueue().length,miss=wishes().length+upgrades().length,pd=pendingDeb().length;
   const it=[["home","Accueil",""],["lib","Ma musique",v?`<span class="bdg" data-tip="${v} à vérifier">${v}</span>`:""],["next","Préparer un set",""],["gigs","Soirées",""],
-    ["trend","Tendances",miss?`<span class="bdg blue" data-tip="${miss} à récupérer">${miss}</span>`:""],["debrief","Débrief vocal",pd?'<span class="dotr" data-tip="Débrief en attente"></span>':""]];
+    ["trend","Tendances",miss?`<span class="bdg blue" data-tip="${miss} à récupérer">${miss}</span>`:""],["listen","Écouter",""],["debrief","Débrief vocal",pd?'<span class="dotr" data-tip="Débrief en attente"></span>':""]];
   const dot=k=>`<i style="background:${H[k]&&PERM[k]==="granted"?"var(--green)":H[k]?"var(--orange)":"#3a3a44"}"></i>`;
-  const SH={home:"Accueil",lib:"Musique",next:"Préparer",gigs:"Soirées",trend:"Tendances",debrief:"Débrief"};
+  const SH={home:"Accueil",lib:"Musique",next:"Préparer",gigs:"Soirées",trend:"Tendances",listen:"Écouter",debrief:"Débrief"};
   $("#nav").innerHTML=`<div class="logo"><div class="disc"></div><b>Set<em>Mate</em></b></div>`+it.map(([k,l,b])=>`<button class="nb ${S.screen===k?"on":""}" onclick="go('${k}')">${svg(k)}<span class="ll">${l}</span><span class="ls">${SH[k]}</span>${b}</button>`).join("")+
    `<div class="navsp"></div><button class="nb ${S.screen==="settings"?"on":""}" onclick="go('settings')">${svg("settings")}<span class="ll">Réglages</span><span class="ls">Réglages</span></button>
    <div class="navfoot">${S.demo?"<b style='color:var(--orange)'>Mode démo</b><br>":""}${dot("serato")}Serato<br>${dot("music")}Musique<br>${dot("dl")}Téléchargements<br>${visible().length} sons</div>`;
 }
 function go(s){S.screen=s;closeNotif();render();$("#main").scrollTop=0;}
 const VIEWS={};
-function render(){renderNav();renderTop();renderBanner();$("#main").innerHTML=`<div class="screen">${VIEWS[S.screen]()}</div>`;if(S.screen==="lib")libTable();renderPlayer();}
+function render(){renderNav();renderTop();renderBanner();$("#main").innerHTML=`<div class="screen">${VIEWS[S.screen]()}</div>`;if(S.screen==="lib")libTable();if(S.screen==="listen")listenAfter();renderPlayer();}
 function softRender(){const m=$("#main"),st=m.scrollTop,ws=window.scrollY;render();m.scrollTop=st;window.scrollTo(0,ws);}
 /** Astuce d’une ligne, affichée une seule fois par écran. */
 function tip(id,html){return S.tips[id]?"":`<div class="tipbox"><span><b>Astuce</b> · ${html}</span><button class="btn sm ghost" onclick="S.tips['${id}']=1;save();softRender()">Compris</button></div>`;}
@@ -1148,8 +1152,8 @@ async function fetchGenre(t){try{const d=await jsonp(`https://api.deezer.com/tra
   const name=al.genres&&al.genres.data&&al.genres.data[0]&&al.genres.data[0].name;if(!name||t.manual)return;const [g,sg,conf]=classify(name,t.a);
   if(g!=="?"){t.g=g;t.sg=sg;t.conf=Math.min(conf,80);t.genreTag=name;save(true);liveRefresh();}}catch(e){}}
 function removeFromLib(t){S.tracks=S.tracks.filter(x=>x!==t);delete S.L[t.n];S.set.ids=S.set.ids.filter(n=>n!==t.n);if(S.cur===t.n)S.cur=S.set.ids[S.set.ids.length-1]||null;reindex();}
-function liveRefresh(){renderNav();const a=document.activeElement&&document.activeElement.id;if(!$(".ov")&&a!=="trQ"&&a!=="pickQ"&&["trend","next","home","lib"].includes(S.screen))softRender();}
-function findDz(dz){return S.trends.items.find(x=>x.dz===dz)||(S.disc.items||[]).find(x=>x.dz===dz)||(S.disc.extra||[]).find(x=>x.dz===dz)||(S.search.items||[]).find(x=>x.dz===dz)||(S.found||{})[dz]||S.tracks.find(t=>t.dz===dz);}
+function liveRefresh(){renderNav();const a=document.activeElement&&document.activeElement.id;if(!$(".ov")&&a!=="trQ"&&a!=="pickQ"&&["trend","next","home","lib","listen"].includes(S.screen))softRender();}
+function findDz(dz){return S.trends.items.find(x=>x.dz===dz)||(S.disc.items||[]).find(x=>x.dz===dz)||(S.disc.extra||[]).find(x=>x.dz===dz)||(S.search.items||[]).find(x=>x.dz===dz)||(S.found||{})[dz]||S.tracks.find(t=>t.dz===dz)||plFind(dz);}
 function addIdea(dz){const x=findDz(dz);if(!x)return;
   const src=(S.disc.items||[]).some(y=>y.dz===dz)?"decouverte":S.trends.items.some(y=>y.dz===dz)?"tendance":"moi";
   const {t,isNew}=addToLib(x,src);if(!isNew){toast(`« ${esc(x.t)} » est déjà dans ta musique.`);return;}
@@ -1404,12 +1408,12 @@ function showSuggLog(){const rows=SESS.log.slice(-60).reverse();
 function exportData(){const st={...S,undo:undefined};download(new Blob([JSON.stringify({setmate:VERSION,date:Date.now(),state:st})],{type:"application/json"}),`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`);toast("Sauvegarde téléchargée.");}
 function importData(){const i=$("#fileIn");i.accept=".json";i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!d.setmate)throw new Error("fichier non reconnu");const keep=S.undo;Object.assign(S,d.state);S.undo=keep;reindex();save(true);render();toast("Données restaurées.");}catch(e){toast("Restauration impossible : "+esc(e.message),false,true);}i.value="";};i.click();}
 function resetAll(){modal(`<h2>Tout effacer ?</h2><p class="hint mt2">Efface les données SetMate de ce navigateur (bibliothèque lue, soirées, débriefs, préférences). Tes fichiers et ta bibliothèque Serato ne sont pas touchés.</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn red" onclick="doReset()">Effacer</button></div>`);}
-async function doReset(){for(const k of ["state","tracks","h_serato","h_music","h_dl"])await DB.del(k);location.reload();}
+async function doReset(){for(const k of ["state","tracks","h_serato","h_music","h_dl",...(S.own||[]).map(o=>"file_"+o.fid)])await DB.del(k);location.reload();}
 
 /* ===================== LECTEUR ===================== */
 const AU=new Audio();let PL=null,progT=null;const DZC={};
 const isPlaying=x=>PL&&PL.u==="t"+x.n;
-async function playTrack(n){const x=T(n);const u="t"+n;if(PL&&PL.u===u)return stopPlay();stopPlay();PL={u,x,src:"…"};renderPlayer();refreshPlay();
+async function playTrack(n,force=false){const x=T(n);const u="t"+n;if(!force&&PL&&PL.u===u)return stopPlay();if(!force)Q.items=[];stopPlay();PL={u,x,src:"…"};renderPlayer();refreshPlay();
   const f=await fileOf(x);if(PL?.u!==u)return;
   if(f){AU.src=URL.createObjectURL(f);PL.src="ton fichier";}
   else if(x.dz){try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";}catch(e){toast("Extrait indisponible.",false,true);return stopPlay();}}
@@ -1418,14 +1422,258 @@ async function playTrack(n){const x=T(n);const u="t"+n;if(PL&&PL.u===u)return st
 async function dzSearch(x){const k=x.a+"|"+x.t;if(k in DZC)return DZC[k];try{const art=String(x.a).split(/,|&| feat/i)[0].trim(),tit=String(x.t).replace(/\(.*\)/,"").trim();
   const d=await jsonp("https://api.deezer.com/search?q="+encodeURIComponent(art+" "+tit)+"&limit=5");const a0=norm(art).trim().split(" ")[0];
   const r=(d.data||[]).find(it=>it.preview&&norm(it.artist?.name).includes(a0)&&norm(it.title).includes(norm(tit).trim().split(" ")[0]));DZC[k]=r?{preview:r.preview,cover:r.album?.cover_medium}:null;}catch(e){DZC[k]=null;}return DZC[k];}
-async function playDz(dz){const u="dz"+dz;if(PL&&PL.u===u)return stopPlay();stopPlay();const it=findDz(dz)||{t:"…",a:""};PL={u,x:{t:it.t,a:it.a,cover:it.cover,k:S.trendCache[dz]?.k,bpm:S.trendCache[dz]?.bpm},src:"…"};renderPlayer();refreshPlay();
+async function playDz(dz,force=false,meta=null){const u="dz"+dz;if(!force&&PL&&PL.u===u)return stopPlay();if(!force)Q.items=[];stopPlay();const it=meta||findDz(dz)||{t:"…",a:""};PL={u,x:{dz,t:it.t,a:it.a,cover:it.cover,k:S.trendCache[dz]?.k,bpm:S.trendCache[dz]?.bpm},src:"…"};renderPlayer();refreshPlay();
   try{const d=await jsonp(`https://api.deezer.com/track/${dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";await AU.play();startProg();}catch(e){toast("Extrait indisponible.",false,true);return stopPlay();}renderPlayer();refreshPlay();}
 function startProg(){clearInterval(progT);progT=setInterval(()=>{const b=$("#pbar");if(b&&AU.duration)b.style.width=(AU.currentTime/AU.duration*100)+"%";},250);}
-AU.onended=()=>stopPlay();
 function stopPlay(){AU.pause();clearInterval(progT);if(AU.src.startsWith("blob:"))URL.revokeObjectURL(AU.src);PL=null;renderPlayer();refreshPlay();}
-function refreshPlay(){if($(".ov")){if(window.findRefresh)findRefresh();return;}if(S.screen==="lib")libTable();else if(["next","trend"].includes(S.screen))softRender();}
-function renderPlayer(){const p=$("#player");p.style.display=(!PL&&MOBILE)?"none":"";if(!PL){p.innerHTML=`<span class="hint">Clique ▶ sur un son pour l’écouter${H.music&&PERM.music==="granted"?" (tes fichiers)":" (extraits Deezer, ou tes fichiers si le dossier Musique est connecté)"}.</span><div class="tsp"></div><span class="kbd">Espace</span>`;return;}
-  const x=PL.x;p.innerHTML=`${cover(x)}<div class="info"><b>${esc(x.t)}</b><small>${esc(x.a)}${x.bpm?" · "+Math.round(x.bpm)+" BPM":""} · ${esc(PL.src)}</small></div><button class="play on" onclick="stopPlay()">${svg("pause",12)}</button><div class="pbar"><i id="pbar"></i></div>${keyTag(x.k)}`;}
+function refreshPlay(){if($(".ov")){if(window.findRefresh)findRefresh();return;}if(S.screen==="lib")libTable();else if(["next","trend","listen"].includes(S.screen))softRender();}
+/* ===================== ÉCOUTER : file d’écoute, playlists, fichiers du téléphone (1.5) =====================
+   Catalogue : extraits de 30 s (Deezer, gratuit, sans compte). Fichiers ajoutés sur le téléphone :
+   en entier et hors connexion, gardés dans ce navigateur (IndexedDB). Rien n’est envoyé à un serveur. */
+Object.assign(IC,{listen:'<path d="M4 15v-3a8 8 0 0116 0v3"/><rect x="3" y="14" width="4" height="7" rx="1.5"/><rect x="17" y="14" width="4" height="7" rx="1.5"/>',
+  prev:'<path d="M19 5L9 12l10 7z"/><path d="M5 5v14"/>',next2:'<path d="M5 5l10 7-10 7z"/><path d="M19 5v14"/>',
+  shuf:'<path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>',rep:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 013-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 01-3 3H3"/>',
+  heart:'<path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 00-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 000-7.8z"/>',
+  radio:'<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 010 8.4M7.8 16.2a6 6 0 010-8.4M19 5a10 10 0 010 14M5 19A10 10 0 015 5"/>'});
+Object.assign(S,{pls:[],own:[],lsTab:"pls",plOpen:null,plLimit:200});
+WHY.playlist="De ta playlist";
+const PLSRC={deezer:"Deezer",texte:"liste collée",fichier:"fichier","cœur":"tes coups de cœur"};
+
+/* ---------- File d’écoute ---------- */
+const Q={items:[],i:-1,shuffle:false,repeat:"off",label:"",fails:0,played:new Set()};
+const qKey=it=>it.n?"t"+it.n:it.fid?"f"+it.fid:"dz"+it.dz;
+const inQueue=()=>!!(Q.items.length&&PL&&Q.items[Q.i]&&PL.u===qKey(Q.items[Q.i]));
+let qTok=0;
+function qStart(items,i=0,label="",rand=false){Q.items=items.filter(Boolean);Q.label=label;Q.fails=0;Q.played=new Set();
+  if(!Q.items.length)return toast("Rien à écouter ici pour l’instant.",false,true);
+  if(rand){Q.shuffle=true;i=Math.floor(Math.random()*Q.items.length);}qPlay(Math.min(i,Q.items.length-1));}
+async function qPlay(i){if(i<0||i>=Q.items.length)return stopPlay();const tok=++qTok;Q.i=i;Q.played.add(i);const it=Q.items[i];
+  if(it.n)await playTrack(it.n,true);else if(it.fid)await playOwn(it.fid,true);else await playDz(it.dz,true,it);
+  if(tok!==qTok)return;
+  // un extrait indisponible ne bloque pas la file : on passe au suivant (3 essais au plus)
+  if(!PL){if(++Q.fails<4&&Q.items.length>1)return qNext();}else Q.fails=0;}
+function qNext(auto=false){if(!Q.items.length)return stopPlay();if(auto&&Q.repeat==="one")return qPlay(Q.i);
+  let i=Q.i+1;
+  if(Q.shuffle&&Q.items.length>1){let left=Q.items.map((_,j)=>j).filter(j=>!Q.played.has(j));
+    if(!left.length){if(auto&&Q.repeat!=="all")return stopPlay();Q.played=new Set();left=Q.items.map((_,j)=>j).filter(j=>j!==Q.i);}
+    i=left[Math.floor(Math.random()*left.length)];}
+  else if(i>=Q.items.length){if(auto&&Q.repeat!=="all")return stopPlay();i=0;}
+  qPlay(i);}
+function qPrev(){if(AU.currentTime>3){AU.currentTime=0;return;}qPlay(Math.max(0,Q.i-1));}
+function qToggle(){if(!PL){if(Q.items.length)qPlay(Math.max(0,Q.i));return;}if(AU.paused)AU.play().catch(()=>{});else AU.pause();renderPlayer();}
+function qRepeat(){Q.repeat=Q.repeat==="off"?"all":Q.repeat==="all"?"one":"off";renderPlayer();toast(Q.repeat==="off"?"Répétition coupée.":Q.repeat==="all"?"Je répète toute la file.":"Je répète ce son.");}
+function seekBar(e,el){if(!AU.duration)return;const r=el.getBoundingClientRect();AU.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*AU.duration;}
+AU.onended=()=>inQueue()?qNext(true):stopPlay();
+AU.onplay=AU.onpause=()=>{if(PL)renderPlayer();else mediaSync();};
+
+/* ---------- Écran verrouillé et écouteurs (Media Session) ---------- */
+function mediaSync(){if(!("mediaSession" in navigator))return;const ms=navigator.mediaSession;
+  if(!PL){try{ms.metadata=null;ms.playbackState="none";}catch(e){}return;}const x=PL.x;
+  try{ms.metadata=new MediaMetadata({title:x.t||"",artist:x.a||"",album:Q.label||"SetMate",
+    artwork:x.cover?[{src:x.cover,sizes:"250x250",type:"image/jpeg"}]:[{src:"icon-512.png",sizes:"512x512",type:"image/png"}]});ms.playbackState=AU.paused?"paused":"playing";}catch(e){}}
+if("mediaSession" in navigator){const h=(a,f)=>{try{navigator.mediaSession.setActionHandler(a,f);}catch(e){}};
+  h("play",()=>{AU.play().catch(()=>{});renderPlayer();});h("pause",()=>{AU.pause();renderPlayer();});h("stop",()=>stopPlay());
+  h("nexttrack",()=>qNext());h("previoustrack",()=>qPrev());h("seekto",d=>{if(d.seekTime!=null)AU.currentTime=d.seekTime;});}
+/* Sur iPhone, le son doit d’abord être lancé par un geste : on « déverrouille » le lecteur au premier toucher,
+   pour que la file puisse enchaîner les sons ensuite. */
+const SIL="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+document.addEventListener("touchend",function unlock(){if(PL)return;AU.muted=true;AU.src=SIL;AU.play().then(()=>{if(AU.src===SIL)AU.pause();}).catch(()=>{}).finally(()=>{AU.muted=false;});},{once:true,passive:true});
+
+/* ---------- Lecteur ---------- */
+function renderPlayer(){const p=$("#player");p.style.display=(!PL&&MOBILE)?"none":"";mediaSync();
+  if(!PL){p.innerHTML=`<span class="hint">Clique ▶ sur un son pour l’écouter${H.music&&PERM.music==="granted"?" (tes fichiers)":" (extraits Deezer, ou tes fichiers si le dossier Musique est connecté)"}.</span><div class="tsp"></div>${Q.items.length?`<button class="chip" onclick="qToggle()">Reprendre la file (${Q.items.length})</button>`:`<span class="kbd">Espace</span>`}`;return;}
+  const x=PL.x,q=inQueue();
+  p.innerHTML=`${cover(x)}<div class="info"><b>${esc(x.t)}</b><small>${esc(x.a)}${x.bpm?" · "+Math.round(x.bpm)+" BPM":""} · ${esc(PL.src)}${q?` · ${Q.i+1}/${Q.items.length}`:""}</small></div>
+    ${q?`<button class="mi" onclick="qPrev()" aria-label="Son précédent">${svg("prev",16)}</button><button class="play on" onclick="qToggle()" aria-label="${AU.paused?"Lecture":"Pause"}">${svg(AU.paused?"play":"pause",12)}</button><button class="mi" onclick="qNext()" aria-label="Son suivant">${svg("next2",16)}</button>`
+      :`<button class="play on" onclick="stopPlay()" aria-label="Arrêter">${svg("pause",12)}</button>`}
+    <div class="pbar clk" onclick="seekBar(event,this)"><i id="pbar"></i></div>
+    ${q?`<button class="mi hm ${Q.shuffle?"onx":""}" onclick="Q.shuffle=!Q.shuffle;renderPlayer()" aria-label="Aléatoire" data-tip="Aléatoire">${svg("shuf",15)}</button><button class="mi hm ${Q.repeat!=="off"?"onx":""}" onclick="qRepeat()" aria-label="Répéter" data-tip="Répéter">${svg("rep",15)}${Q.repeat==="one"?"<sup>1</sup>":""}</button>`:""}
+    <button class="mi ${isLiked(x)?"onx":""}" onclick="toggleLike()" aria-label="Coup de cœur" data-tip="Coup de cœur">${svg("heart",15)}</button>
+    <button class="mi hm" onclick="startRadio()" aria-label="Radio" data-tip="Radio : des sons du même univers">${svg("radio",15)}</button>${keyTag(x.k)}`;}
+
+/* ---------- Fichiers du téléphone (hors connexion) ---------- */
+function dbPut(k,v){return new Promise((res,rej)=>{try{const t=DB.db.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=()=>res();t.onerror=t.onabort=()=>rej(t.error||new Error("stockage plein"));}catch(e){rej(e);}});}
+function parseName(name){let s=String(name||"").replace(/\.[a-z0-9]{2,4}$/i,"").replace(/_/g," ").replace(/^\s*\d{1,3}\s*[-.)]\s*/,"").trim();
+  const p=s.split(/\s+[-–—]\s+/);return p.length>1?{a:p[0].trim(),t:p.slice(1).join(" - ").trim()}:{a:"",t:s};}
+function addOwnFiles(){if(!DB.db)return toast("Stockage indisponible dans ce navigateur.",false,true);const i=$("#fileIn");i.accept="audio/*,.mp3,.m4a,.aac,.wav,.aif,.aiff,.flac";i.multiple=true;
+  i.onchange=async()=>{const fs=[...i.files];i.value="";i.multiple=false;if(!fs.length)return;
+    try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist();}catch(e){}
+    let ok=0,ko=0;toast(`J’enregistre ${pl(fs.length,"fichier")} sur ce téléphone…`);
+    for(const f of fs){const fid=Date.now().toString(36)+Math.random().toString(36).slice(2,7),m=parseName(f.name);
+      try{await dbPut("file_"+fid,f);S.own.push({fid,t:m.t,a:m.a,size:f.size,type:f.type,added:Date.now()});ok++;}catch(e){ko++;}}
+    save();toast(`${pl(ok,"fichier")} prêt${ok>1?"s":""} à écouter, même sans réseau${ko?`. ${ko} refusé${ko>1?"s":""} : place insuffisante ?`:"."}`,false,!!ko);S.lsTab="own";softRender();};i.click();}
+async function playOwn(fid,force=false){const u="f"+fid;if(!force&&PL&&PL.u===u)return stopPlay();if(!force)Q.items=[];stopPlay();
+  const o=S.own.find(x=>x.fid===fid);if(!o)return;PL={u,x:{t:o.t,a:o.a},src:"sur ce téléphone"};renderPlayer();
+  const b=await DB.get("file_"+fid);if(PL?.u!==u)return;if(!b){toast("Fichier introuvable sur ce téléphone.",false,true);return stopPlay();}
+  AU.src=URL.createObjectURL(b);try{await AU.play();}catch(e){toast("Lecture impossible : "+esc(e.message)+(/flac|aif/i.test(o.type)?" (format peu lu par l’iPhone : préfère MP3, M4A ou WAV)":""),false,true);return stopPlay();}
+  startProg();renderPlayer();refreshPlay();}
+function ownPlay(i=0,rand=false){qStart(S.own.map(o=>({fid:o.fid,t:o.t,a:o.a})),i,"Sur ce téléphone",rand);}
+async function ownRm(fid){const i=S.own.findIndex(o=>o.fid===fid);if(i<0)return;const o=S.own[i],b=await DB.get("file_"+fid);
+  if(PL&&PL.u==="f"+fid)stopPlay();S.own.splice(i,1);await DB.del("file_"+fid);save();
+  pushUndo("suppression du fichier",async()=>{if(b)await dbPut("file_"+fid,b);S.own.splice(i,0,o);save();softRender();});toast(`« ${esc(o.t)} » retiré de ce téléphone.`,true);softRender();}
+const ownMatch=x=>(S.own||[]).find(o=>baseTitle(o.t)===baseTitle(x.t)&&(!o.a||!x.a||norm(o.a).includes(" "+norm(x.a).trim().split(" ")[0]+" ")));
+async function listenAfter(){const el=$("#stoInfo");if(!el||!navigator.storage||!navigator.storage.estimate)return;
+  try{const e=await navigator.storage.estimate(),mo=b=>Math.round(b/1048576);
+    el.textContent=`Place utilisée : ${mo(e.usage||0)} Mo${e.quota?` sur ${e.quota>10*1073741824?Math.round(e.quota/1073741824)+" Go":mo(e.quota)+" Mo"} possibles`:""}.`;}catch(e){}}
+
+/* ---------- Playlists importées ---------- */
+const plGet=id=>(S.pls||[]).find(p=>p.id===id);
+function plFind(dz){for(const p of S.pls||[]){const x=p.items.find(y=>y.dz===dz)||(p.sim||[]).find(y=>y.dz===dz);if(x)return x;}return (S.radio||[]).find(y=>y.dz===dz)||null;}
+const dzItemA=t=>Object.assign(dzItem(t),{aid:t.artist?t.artist.id:null});
+function splitRow(l,sep){if(sep==="\t")return l.split("\t");const r=[];let cur="",q=false;
+  for(let i=0;i<l.length;i++){const c=l[i];if(q){if(c==='"'){if(l[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}else if(c==='"')q=true;else if(c===sep){r.push(cur);cur="";}else cur+=c;}r.push(cur);return r;}
+/** Lit une liste de sons, quel que soit son format : M3U, tableau (export Musique, Exportify, TuneMyMusic), ou une ligne « Artiste - Titre » par son. */
+function parseList(text){const lines=String(text||"").replace(/^﻿/,"").split(/\r\n|\r|\n/).map(l=>l.trim()).filter(Boolean);
+  const out=[],seen=new Set(),push=(t,a)=>{t=String(t||"").trim();a=String(a||"").trim();if(!t)return;const k=norm(a+" "+t);if(seen.has(k))return;seen.add(k);out.push({t,a});};
+  if(!lines.length)return out;const head=lines[0].toLowerCase();
+  if(head.startsWith("#extm3u")||lines.some(l=>/^#EXTINF/i.test(l))){let inf=null;
+    for(const l of lines){if(/^#EXTINF/i.test(l)){inf=l.replace(/^#EXTINF:[^,]*,/i,"");continue;}if(l.startsWith("#"))continue;const m=parseName(inf||l.split(/[\\/]/).pop());push(m.t,m.a);inf=null;}return out;}
+  const sep=head.includes("\t")?"\t":/(track|titre|title|name|nom)/.test(head)&&head.includes(",")?",":/(track|titre|title|name|nom)/.test(head)&&head.includes(";")?";":null;
+  if(sep){const rows=lines.map(l=>splitRow(l,sep)),h=rows[0].map(c=>c.toLowerCase().trim());
+    const ti=h.findIndex(c=>/^(name|nom|titre|title|track name|track|song|morceau)$/.test(c)),ai=h.findIndex(c=>/^(artist|artiste|artist name\(s\)|artist name|artists|artistes|interprète)$/.test(c));
+    if(ti>=0){rows.slice(1).forEach(r=>push(r[ti],ai>=0?String(r[ai]||"").split(/;|\|/)[0]:""));return out;}
+    if(sep==="\t"){rows.forEach(r=>{const d=r.findIndex(c=>/^\d{1,2}:\d{2}(:\d{2})?$/.test(c.trim()));push(r[0],d>=0?r[d+1]:r[1]);});return out;}}
+  for(const l of lines){if(/^https?:\/\//i.test(l))continue;const s=l.replace(/^\s*\d{1,3}\s*[.)-]\s+/,""),m=s.split(/\s+[-–—]\s+/);
+    if(m.length>1)push(m.slice(1).join(" - "),m[0]);else{const b=s.split(/\s+(?:by|par|·)\s+/i);b.length>1?push(b[0],b[1]):push(s,"");}}
+  return out;}
+/** Retrouve un son sur Deezer à partir de son titre et de son artiste ; essaie aussi l’ordre inverse. */
+async function dzMatch(x,swapped=false){const art=String(x.a||"").split(/,|&| feat| ft\.| x /i)[0].trim(),tit=String(x.t||"").replace(/\(.*?\)|\[.*?\]/g,"").trim();
+  if(!tit)return null;let best=null,bs=0;
+  try{const d=await jsonp("https://api.deezer.com/search?q="+encodeURIComponent((art+" "+tit).trim())+"&limit=8");const T0=norm(tit).trim(),A0=norm(art).trim();
+    for(const it of d.data||[]){const tt=norm(it.title_short||it.title).trim(),aa=norm(it.artist&&it.artist.name).trim();let s=0;
+      if(tt===T0)s+=3;else if(tt&&(tt.includes(T0)||T0.includes(tt)))s+=2;else if(tt.includes(T0.split(" ")[0]))s+=1;
+      if(A0){if(aa===A0)s+=3;else if(aa&&(aa.includes(A0.split(" ")[0])||A0.includes(aa)))s+=2;}else s+=1;
+      if(s>bs){bs=s;best=it;}}
+    if(best&&bs>=(A0?4:3))return dzItemA(best);}catch(e){return null;}
+  return !swapped&&x.a?dzMatch({t:x.a,a:x.t},true):null;}
+function importPlaylist(){modal(`<h2>Importer une playlist</h2><p class="hint mt2">Gratuit et sans compte. Choisis une des trois façons.</p>
+  <div class="card mt" style="padding:12px"><b>1. Un lien Deezer</b><p class="hint">Dans Deezer : Partager, puis Copier le lien.</p><input class="f mt2" id="plUrl" placeholder="https://www.deezer.com/fr/playlist/…" style="width:100%" autocomplete="off"></div>
+  <div class="card mt" style="padding:12px"><b>2. Une liste de sons</b><p class="hint">Un son par ligne : « Artiste - Titre ». Marche avec une liste copiée depuis Musique sur Mac, une note, un message…</p><textarea class="f mt2" id="plTxt" rows="5" style="width:100%" placeholder="Burna Boy - Last Last&#10;Tayc - N’y pense plus"></textarea></div>
+  <div class="card mt" style="padding:12px"><b>3. Un fichier</b><p class="hint">Export de Musique (.txt), d’Exportify ou de TuneMyMusic (.csv), ou playlist .m3u / .m3u8.</p><button class="btn ghost sm mt2" onclick="plFromFile()">Choisir un fichier</button></div>
+  <details class="mt"><summary class="hint clk">Ma playlist est sur Apple Music ou Spotify</summary><p class="hint mt2"><b>Apple Music sur Mac</b> : ouvre la playlist, sélectionne tout (⌘ A), copie (⌘ C), colle dans la case 2.<br><b>Spotify</b> : exporte la playlist en .csv avec un outil d’export gratuit (Exportify par exemple), puis choisis le fichier en 3.<br>La connexion directe à ces comptes demande un accès développeur payant ou limité : prévue plus tard.</p></details>
+  <input class="f mt" id="plName" placeholder="Nom de la playlist (facultatif)" style="width:100%" autocomplete="off">
+  <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="plFromModal()">Importer</button></div>`);}
+function plFromModal(){const url=$("#plUrl").value.trim(),txt=$("#plTxt").value,name=$("#plName").value.trim();
+  if(url){if(/spotify\.com|music\.apple\.com/i.test(url))return toast("Ce lien ne se lit pas sans compte développeur. Ouvre l’aide « Ma playlist est sur Apple Music ou Spotify ».",false,true);
+    const m=url.match(/playlist\/(\d+)/)||url.match(/^(\d{4,})$/);
+    if(!m)return toast(/link\.deezer|page\.link|dzr\.page/i.test(url)?"Lien court : ouvre-le une fois, puis copie le lien complet (avec /playlist/).":"Lien Deezer non reconnu.",false,true);
+    closeModal();return plFromDeezer(m[1],name);}
+  if(txt.trim()){const items=parseList(txt);if(!items.length)return toast("Aucun son reconnu dans cette liste.",false,true);closeModal();return plFromItems(items,name||"Ma playlist","texte");}
+  toast("Colle un lien ou une liste, ou choisis un fichier.",false,true);}
+function plFromFile(){const i=$("#fileIn");i.accept=".txt,.csv,.tsv,.m3u,.m3u8";i.onchange=async()=>{const f=i.files[0];i.value="";if(!f)return;
+  const b=new Uint8Array(await f.arrayBuffer()),enc=b[0]===0xFF&&b[1]===0xFE?"utf-16le":b[0]===0xFE&&b[1]===0xFF?"utf-16be":b.length>1&&b[1]===0&&b[3]===0?"utf-16le":"utf-8";
+  const items=parseList(new TextDecoder(enc).decode(b)),name=(($("#plName")||{}).value||"").trim()||f.name.replace(/\.[^.]+$/,"");
+  closeModal();if(!items.length)return toast("Aucun son reconnu dans ce fichier.",false,true);plFromItems(items,name,"fichier");};i.click();}
+async function plFromDeezer(id,name){toast("J’importe la playlist Deezer…");
+  try{const d=await jsonp(`https://api.deezer.com/playlist/${id}`);const items=((d.tracks&&d.tracks.data)||[]).map(dzItemA);let idx=items.length;
+    while(idx<Math.min(d.nb_tracks||0,1000)){const r=await jsonp(`https://api.deezer.com/playlist/${id}/tracks?index=${idx}&limit=100`);const a=(r.data||[]).map(dzItemA);if(!a.length)break;items.push(...a);idx+=a.length;}
+    plCreate(name||d.title||"Playlist Deezer","deezer",items.filter(x=>x.dz),d.picture_medium);}catch(e){toast("Import impossible : "+esc(e.message),false,true);}}
+function plFromItems(items,name,src){plCreate(name,src,items,null);}
+function plCreate(name,src,items,cv){const p={id:"p"+Date.now().toString(36),name,src,date:Date.now(),items,cover:cv||null};S.pls.unshift(p);save();
+  S.lsTab="pls";S.plOpen=p.id;S.plLimit=200;go("listen");if(p.items.some(x=>!x.dz))plMatch(p);else toast(`Playlist « ${esc(name)} » importée : ${pl(items.length,"son")}.`);}
+let plBusy=null;
+async function plMatch(p){const todo=p.items.filter(x=>!x.dz&&!x.miss);if(!todo.length)return;plBusy={id:p.id,done:0,total:todo.length};softListen();let k=0;
+  // 3 recherches en parallèle, espacées : Deezer limite le nombre de requêtes par seconde
+  const worker=async()=>{while(k<todo.length){const x=todo[k++];const r=await dzMatch(x);if(r)Object.assign(x,{dz:r.dz,cover:r.cover,pop:r.pop,aid:r.aid,dzT:r.t,dzA:r.a});else x.miss=true;
+    plBusy.done++;if(plBusy.done%6===0)softListen();await sleep(250);}};
+  await Promise.all([worker(),worker(),worker()]);plBusy=null;
+  // deux lignes qui désignent le même son (ordre inversé, orthographe) n’en font plus qu’une
+  const sd=new Set(),n0=p.items.length;p.items=p.items.filter(x=>!x.dz||(sd.has(x.dz)?false:sd.add(x.dz)));const dup=n0-p.items.length;save();softListen();const miss=todo.filter(x=>x.miss).length;
+  toast(`« ${esc(p.name)} » prête : ${pl(todo.length-miss,"son")} trouvé${todo.length-miss>1?"s":""}${miss?`, ${miss} introuvable${miss>1?"s":""}`:""}${dup?`, ${dup} doublon${dup>1?"s":""} fusionné${dup>1?"s":""}`:""}.`,false,false,"lib");}
+function softListen(){if(S.screen==="listen"&&!$(".ov"))softRender();}
+function plQueueItem(x){const o=ownMatch(x);if(o)return {fid:o.fid,t:o.t,a:o.a};const m=libMatch(x);if(m&&!m.wish)return {n:m.n,t:m.t,a:m.a,cover:m.cover};
+  return x.dz?{dz:x.dz,t:x.t,a:x.a,cover:x.cover}:null;}
+function plPlay(id,i=0,rand=false){const p=plGet(id);if(!p)return;const map=[],items=[];p.items.forEach((x,j)=>{const q=plQueueItem(x);if(q){map[j]=items.length;items.push(q);}});
+  const k=map[i]!=null?map[i]:0,cur=items[k];if(!rand&&cur&&PL&&PL.u===qKey(cur)&&Q.label===p.name)return qToggle();qStart(items,k,p.name,rand);}
+function plAdd(id,i){const p=plGet(id),x=p&&p.items[i];if(!x||!x.dz)return;const {t,isNew}=addToLib(x,"playlist");if(!isNew)return toast(`« ${esc(x.t)} » est déjà dans ta musique.`);
+  pushUndo("ajout à ta musique",()=>removeFromLib(t));save(true);toast(`« ${esc(x.t)} » ajouté à ta musique`,true,false,"lib");softRender();}
+function plAddAll(id){const p=plGet(id);if(!p)return;const added=[];for(const x of p.items){if(!x.dz)continue;const {t,isNew}=addToLib(x,"playlist");if(isNew)added.push(t);}
+  if(!added.length)return toast("Tout est déjà dans ta musique.");pushUndo(`ajout de ${added.length} sons`,()=>added.forEach(removeFromLib));save(true);
+  toast(`${pl(added.length,"son")} ajouté${added.length>1?"s":""} à ta musique, marqué${added.length>1?"s":""} « à récupérer ».`,true,false,"lib");softRender();}
+function plRm(id,i){const p=plGet(id);if(!p)return;const [x]=p.items.splice(i,1);pushUndo("retrait de la playlist",()=>{p.items.splice(i,0,x);save();softRender();});save();toast(`« ${esc(x.t)} » retiré de la playlist.`,true);softRender();}
+function plSimAdd(id,dz){const p=plGet(id),x=p&&(p.sim||[]).find(y=>y.dz===dz);if(!x)return;if(p.items.some(y=>y.dz===dz))return toast("Déjà dans la playlist.");
+  p.items.push({t:x.t,a:x.a,dz:x.dz,cover:x.cover,pop:x.pop,aid:x.aid});p.sim=p.sim.filter(y=>y.dz!==dz);save();toast(`« ${esc(x.t)} » ajouté à « ${esc(p.name)} ».`);softRender();}
+function plDel(id){const i=S.pls.findIndex(p=>p.id===id);if(i<0)return;const [p]=S.pls.splice(i,1);S.plOpen=null;pushUndo("suppression de la playlist",()=>{S.pls.splice(i,0,p);save();softRender();});save();toast(`Playlist « ${esc(p.name)} » supprimée.`,true);softRender();}
+function plRename(id){const p=plGet(id);if(!p)return;modal(`<h2>Renommer</h2><input class="f mt" id="plNew" value="${esc(p.name)}" style="width:100%"><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="const v=$('#plNew').value.trim();if(v){plGet('${p.id}').name=v;save();}closeModal();softRender()">Garder</button></div>`);}
+/** Exporte la playlist en texte : à recoller dans un autre service (transfert gratuit). */
+function plExport(id,fmt){const p=plGet(id);if(!p)return;const safe=s=>`"${String(s||"").replace(/"/g,'""')}"`;
+  const txt=fmt==="csv"?"Track name,Artist name\n"+p.items.map(x=>safe(x.t)+","+safe(x.a)).join("\n"):p.items.map(x=>(x.a?x.a+" - ":"")+x.t).join("\n");
+  if(fmt==="copy"){(navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast(`${pl(p.items.length,"son")} copié${p.items.length>1?"s":""} : colle la liste où tu veux.`),()=>toast("Copie impossible ici : utilise le fichier .txt.",false,true));return;}
+  download(new Blob(["﻿"+txt],{type:fmt==="csv"?"text/csv":"text/plain"}),`${p.name}.${fmt}`);toast("Fichier téléchargé.");}
+const plSimBusy=new Set();
+/** Sons du même univers que la playlist : radios Deezer de ses artistes principaux, peu connus d’abord. */
+async function plSimilar(id){const p=plGet(id);if(!p||plSimBusy.has(id))return;plSimBusy.add(id);softListen();
+  try{const cnt={};p.items.forEach(x=>{const a=norm(String(x.dzA||x.a).split(/,|&| feat/i)[0]).trim();if(a)cnt[a]=(cnt[a]||0)+1;});
+    const arts=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,6).map(e=>e[0]),have=new Set(p.items.map(x=>x.dz).filter(Boolean)),seen=new Set(),res=[];
+    for(const a of arts){try{const x=p.items.find(y=>y.aid&&norm(y.dzA||y.a).includes(" "+a.split(" ")[0]+" "));let aid=x&&x.aid;
+      if(!aid){const s=await jsonp("https://api.deezer.com/search/artist?q="+encodeURIComponent(a)+"&limit=1");aid=s.data&&s.data[0]&&s.data[0].id;}
+      if(!aid)continue;const r=await jsonp(`https://api.deezer.com/artist/${aid}/radio?limit=15`);
+      for(const t of r.data||[]){const it=dzItemA(t);if(!t.preview||have.has(it.dz)||seen.has(it.dz)||libMatch(it))continue;seen.add(it.dz);it.peu=it.pop<PEU_CONNU;res.push(it);}}
+      catch(e){/* un artiste sans radio Deezer ne bloque pas les autres */}
+      await sleep(150);}
+    if(!res.length)throw new Error("rien de nouveau trouvé");p.sim=shuffle(res).sort((a,b)=>(b.peu?1:0)-(a.peu?1:0)).slice(0,30);analyzeQueue(p.sim);}
+  catch(e){toast("Suggestions impossibles : "+esc(e.message),false,true);}
+  plSimBusy.delete(id);save();softListen();}
+async function startRadio(){if(!PL)return;const x=PL.x;toast(`Je prépare une radio autour de « ${esc(x.t)} »…`);
+  try{let aid=null;const dz=x.dz||(PL.u.startsWith("dz")?+PL.u.slice(2):null);
+    if(dz){const d=await jsonp(`https://api.deezer.com/track/${dz}`);aid=d.artist&&d.artist.id;}
+    if(!aid&&x.a){const s=await jsonp("https://api.deezer.com/search/artist?q="+encodeURIComponent(String(x.a).split(/,|&| feat/i)[0])+"&limit=1");aid=s.data&&s.data[0]&&s.data[0].id;}
+    if(!aid)throw new Error("artiste introuvable");const r=await jsonp(`https://api.deezer.com/artist/${aid}/radio?limit=40`);
+    const items=(r.data||[]).filter(t=>t.preview).map(dzItemA);if(!items.length)throw new Error("radio vide");
+    S.radio=items;qStart(items.map(it=>({dz:it.dz,t:it.t,a:it.a,cover:it.cover})),0,"Radio · "+(x.a||x.t));}catch(e){toast("Radio impossible : "+esc(e.message),false,true);}}
+/* ---------- Coups de cœur ---------- */
+const sameSong=(a,b)=>!!((a.dz&&b.dz&&a.dz===b.dz)||(baseTitle(a.t)===baseTitle(b.t)&&norm(a.a).trim().split(" ")[0]===norm(b.a).trim().split(" ")[0]));
+function likesPl(create){let p=(S.pls||[]).find(x=>x.id==="likes");if(!p&&create){p={id:"likes",name:"Coups de cœur",src:"cœur",date:Date.now(),items:[]};S.pls.unshift(p);}return p;}
+function isLiked(x){const p=likesPl(false);return !!p&&p.items.some(y=>sameSong(x,y));}
+function toggleLike(){if(!PL)return;const x=PL.x,p=likesPl(true),i=p.items.findIndex(y=>sameSong(x,y));
+  if(i>=0){p.items.splice(i,1);toast("Retiré de tes coups de cœur.");}else{p.items.unshift({t:x.t,a:x.a,dz:x.dz||null,cover:x.cover||null});toast("Ajouté à tes coups de cœur.");}
+  save();renderPlayer();softListen();}
+
+/* ---------- Écran ---------- */
+const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const installed=()=>navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;
+function rowKey(x){const q=plQueueItem(x);return q?qKey(q):"";}
+function plCard(p){const n=p.items.length,f=p.items.filter(x=>x.dz||ownMatch(x)).length,busy=plBusy&&plBusy.id===p.id;
+  return `<div class="trow"><div class="clk" style="display:contents" onclick="S.plOpen='${p.id}';S.plLimit=200;softRender();$('#main').scrollTop=0">${p.cover?cover({cover:p.cover,a:p.name}):`<div class="cv" style="display:grid;place-items:center;background:var(--panel3)">${svg(p.id==="likes"?"heart":"listen",18)}</div>`}
+    <div class="tm"><b>${esc(p.name)}</b><div class="hint">${pl(n,"son")} · ${esc(PLSRC[p.src]||p.src)}${busy?` · je cherche ${plBusy.done}/${plBusy.total}`:f<n?` · ${f} à écouter`:""}</div></div></div>
+    <button class="play" onclick="plPlay('${p.id}',0)" aria-label="Écouter">${svg("play",12)}</button></div>`;}
+function plDetail(p){const busy=plBusy&&plBusy.id===p.id,dzN=p.items.filter(x=>x.dz).length,toAdd=p.items.filter(x=>x.dz&&!libMatch(x)).length,lim=S.plLimit||200;
+  const rows=p.items.slice(0,lim).map((x,i)=>{const k=rowKey(x),on=k&&PL&&PL.u===k&&!AU.paused,m=libMatch(x),o=ownMatch(x);
+    const st=o?"sur ce téléphone":m&&!m.wish?"dans ta musique":m?"à récupérer":x.miss?"introuvable":!x.dz?"je cherche…":"";
+    return `<div class="trow">${cover(x)}<div class="tm clk" onclick="plPlay('${p.id}',${i})"><b>${esc(x.t)}</b><div class="hint">${esc(x.a)}${st?" · "+st:""}</div></div>
+      ${k?`<button class="play ${on?"on":""}" onclick="plPlay('${p.id}',${i})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>`:""}
+      ${x.dz&&!m?`<button class="btn sm add" onclick="plAdd('${p.id}',${i})" aria-label="Ajouter à ma musique">${svg("plus",15)}</button>`:""}
+      <button class="mi" onclick="plRm('${p.id}',${i})" aria-label="Retirer de la playlist" data-tip="Retirer">${svg("x",14)}</button></div>`;}).join("");
+  const sim=p.sim||[],sb=plSimBusy.has(p.id);
+  return `<button class="chip" onclick="S.plOpen=null;softRender()">‹ Mes playlists</button>
+    <div class="row between mt"><div><h1 style="margin:0">${esc(p.name)}</h1><p class="sub" style="margin:4px 0 0">${pl(p.items.length,"son")} · ${esc(PLSRC[p.src]||p.src)}${busy?` · je retrouve les sons : ${plBusy.done}/${plBusy.total}`:""}</p></div></div>
+    <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="plPlay('${p.id}',0)">${svg("play",13)}Écouter</button><button class="btn ghost" onclick="plPlay('${p.id}',0,true)">${svg("shuf",14)}Aléatoire</button>
+      <button class="btn ghost" onclick="plSimilar('${p.id}')" ${sb||!p.items.length?"disabled":""}>${svg("radio",14)}${sb?"Je cherche…":"Sons du même univers"}</button>
+      ${toAdd?`<button class="btn ghost" onclick="plAddAll('${p.id}')">${svg("plus",14)}Tout ajouter à ma musique (${toAdd})</button>`:""}</div>
+    ${sim.length?`<h3 class="mt">Pour enrichir cette playlist</h3><p class="hint">Même univers, les moins connus d’abord. <b style="color:var(--txt)">+</b> : dans ta musique. <b style="color:var(--txt)">→</b> : dans cette playlist.</p>
+      <div class="card mt2" style="padding:4px 14px">${sim.map(x=>trRow(x,false).replace(/<\/div>\s*$/,`<button class="mi" onclick="plSimAdd('${p.id}',${x.dz})" aria-label="Ajouter à la playlist" data-tip="Dans cette playlist">→</button></div>`)).join("")}</div>`:""}
+    <div class="card mt" style="padding:4px 14px">${rows||`<div class="empty">Playlist vide. Mets un son en coup de cœur (♥ dans le lecteur) pour la remplir.</div>`}</div>
+    ${p.items.length>lim?`<button class="btn ghost block mt" onclick="S.plLimit=${lim+200};softRender()">Afficher plus (${p.items.length-lim} restants)</button>`:""}
+    <div class="row mt" style="gap:8px;flex-wrap:wrap"><span class="hint">Emporter la liste ailleurs :</span><button class="chip" onclick="plExport('${p.id}','copy')">Copier</button><button class="chip" onclick="plExport('${p.id}','txt')">Fichier .txt</button><button class="chip" onclick="plExport('${p.id}','csv')">Fichier .csv</button>
+      <span class="tsp"></span><button class="chip" onclick="plRename('${p.id}')">Renommer</button><button class="chip" onclick="plDel('${p.id}')">Supprimer</button></div>
+    ${dzN<p.items.length&&!busy&&p.items.some(x=>x.miss)?`<p class="hint mt2">Les sons « introuvables » n’ont pas d’équivalent clair sur Deezer : vérifie l’orthographe ou ajoute le fichier sur ce téléphone.</p>`:""}`;}
+function qLabel(it){if(it.n){const t=T(it.n);return t?{t:t.t,a:t.a,cover:t.cover}:it;}if(it.fid){const o=S.own.find(x=>x.fid===it.fid);return o||it;}return it;}
+VIEWS.listen=()=>{const tab=S.lsTab||"pls",p=S.plOpen&&plGet(S.plOpen);
+  const inst=isIOS&&!installed()?tip("install",`installe SetMate comme une appli : dans Safari, touche <b style="color:var(--txt)">Partager</b>, puis <b style="color:var(--txt)">Sur l’écran d’accueil</b>.`):"";
+  if(tab==="pls"&&p)return inst+plDetail(p);
+  const head=`<h1>Écouter</h1><p class="sub">Tes playlists, tes fichiers sur ce téléphone, et des radios pour découvrir. Sons du catalogue : extraits de 30 s. Tes fichiers : en entier, même sans réseau.</p>${inst}
+    <div class="seg mt" style="display:flex;width:100%;max-width:560px">${[["pls","Playlists"],["own","Sur ce téléphone"],["q",`File d’écoute${Q.items.length?" ("+Q.items.length+")":""}`]].map(([k,l])=>`<button style="flex:1;text-align:center" class="${tab===k?"on":""}" onclick="S.lsTab='${k}';save();softRender()">${l}</button>`).join("")}</div>`;
+  if(tab==="own"){const own=S.own||[];
+    return head+`<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="addOwnFiles()">${svg("plus",15)}Ajouter des fichiers audio</button>${own.length?`<button class="btn ghost" onclick="ownPlay(0)">${svg("play",13)}Tout écouter</button><button class="btn ghost" onclick="ownPlay(0,true)">${svg("shuf",14)}Aléatoire</button>`:""}</div>
+      <p class="hint mt2">MP3, M4A, AAC ou WAV, choisis dans l’app Fichiers. Ils restent dans SetMate, sur cet appareil. <span id="stoInfo"></span></p>
+      <div class="card mt" style="padding:4px 14px">${own.length?own.map((o,i)=>{const on=PL&&PL.u==="f"+o.fid&&!AU.paused;return `<div class="trow">${cover(o)}<div class="tm clk" onclick="ownPlay(${i})"><b>${esc(o.t)}</b><div class="hint">${esc(o.a||"Artiste inconnu")} · ${Math.max(1,Math.round(o.size/1048576))} Mo</div></div>
+        <button class="play ${on?"on":""}" onclick="${PL&&PL.u==="f"+o.fid&&inQueue()?"qToggle()":`ownPlay(${i})`}" aria-label="Écouter">${svg(on?"pause":"play",12)}</button><button class="mi" onclick="ownRm('${o.fid}')" aria-label="Retirer de ce téléphone" data-tip="Retirer">${svg("x",14)}</button></div>`;}).join(""):`<div class="empty">Aucun fichier pour l’instant. Ajoute tes sons pour les écouter partout, même en avion.</div>`}</div>`;}
+  if(tab==="q"){return head+(Q.items.length?`<div class="row between mt"><span class="hint">${esc(Q.label||"File d’écoute")}</span><span class="row" style="gap:6px"><button class="chip ${Q.shuffle?"on":""}" onclick="Q.shuffle=!Q.shuffle;softRender()">Aléatoire</button><button class="chip ${Q.repeat!=="off"?"on":""}" onclick="qRepeat();softRender()">Répéter${Q.repeat==="one"?" ce son":Q.repeat==="all"?" tout":""}</button><button class="chip" onclick="Q.items=[];Q.i=-1;stopPlay();softRender()">Vider</button></span></div>
+      <div class="card mt2" style="padding:4px 14px">${Q.items.map((it,i)=>{const l=qLabel(it),cur=i===Q.i;return `<div class="trow">${cover(l)}<div class="tm clk" onclick="qPlay(${i})"><b style="${cur?"color:var(--blue)":""}">${esc(l.t)}</b><div class="hint">${esc(l.a||"")}${cur?" · en cours":""}</div></div></div>`;}).join("")}</div>`
+      :`<div class="card mt"><div class="empty">La file est vide. Lance une playlist, tes fichiers ou une radio (bouton radio du lecteur).</div></div>`);}
+  const pls=S.pls||[];
+  return head+`<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="importPlaylist()">${svg("plus",15)}Importer une playlist</button></div>
+    <div class="card mt" style="padding:4px 14px">${pls.length?pls.map(plCard).join(""):`<div class="empty">Importe une playlist (lien Deezer, liste copiée ou fichier) pour l’écouter ici et y trouver de nouveaux sons.</div>`}</div>`;};
 
 /* ===================== FENÊTRES, RECHERCHE, CLAVIER ===================== */
 function modal(html){$("#layer").innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal" role="dialog">${html}</div></div>`;}
@@ -1433,7 +1681,7 @@ function closeModal(){$("#layer").innerHTML="";}
 let palSel=0,palItems=[];
 function openPalette(){$("#layer").innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="pal"><input id="palQ" placeholder="Un son, un artiste, une action…" oninput="palSel=0;palRender()" autocomplete="off"><div class="res" id="palR"></div></div></div>`;palRender();setTimeout(()=>{const q=$("#palQ");if(q)q.focus();},30);}
 function palRender(){const q=norm($("#palQ").value).trim();
-  const acts=[["Accueil",()=>go("home"),"home"],["Préparer un set",()=>go("next"),"next"],["Faire le débrief",()=>go("debrief"),"debrief"],["Tendances",()=>go("trend"),"trend"],["Actualiser les tendances",()=>{go("trend");refreshTrends();},"refresh"],["Sons à vérifier",()=>{S.libView="check";go("lib")},"lib"],["Nouvelle soirée",()=>{go("gigs");newGig()},"gigs"],["Importer un historique Serato",()=>{go("gigs");importHistory()},"dl"],["Copier le set sur clé USB",()=>{go("next");exportUsb()},"usb"],["Réglages",()=>go("settings"),"settings"]];
+  const acts=[["Accueil",()=>go("home"),"home"],["Préparer un set",()=>go("next"),"next"],["Faire le débrief",()=>go("debrief"),"debrief"],["Tendances",()=>go("trend"),"trend"],["Écouter mes playlists",()=>go("listen"),"listen"],["Importer une playlist",()=>{go("listen");importPlaylist()},"listen"],["Actualiser les tendances",()=>{go("trend");refreshTrends();},"refresh"],["Sons à vérifier",()=>{S.libView="check";go("lib")},"lib"],["Nouvelle soirée",()=>{go("gigs");newGig()},"gigs"],["Importer un historique Serato",()=>{go("gigs");importHistory()},"dl"],["Copier le set sur clé USB",()=>{go("next");exportUsb()},"usb"],["Réglages",()=>go("settings"),"settings"]];
   palItems=[...acts.filter(a=>!q||norm(a[0]).includes(q)).map(a=>({l:esc(a[0]),f:a[1],ic:svg(a[2],16),k:"Action"})),...(q?visible().filter(x=>norm(x.t+" "+x.a+" "+x.sg).includes(q)).slice(0,8).map(x=>({l:`${esc(x.t)} <span class="hint">· ${esc(x.a)}${x.bpm?" · "+Math.round(x.bpm)+" BPM":""}</span>`,f:()=>startFrom(x.n),ic:cover(x),k:"Partir de ce son"})):[])];
   palSel=Math.min(palSel,Math.max(0,palItems.length-1));
   $("#palR").innerHTML=palItems.map((it,i)=>`<div class="it ${i===palSel?"on":""}" onmouseenter="palSel=${i};palHi()" onclick="palGo(${i})">${it.ic}<span>${it.l}</span><small>${it.k}</small></div>`).join("")||'<div class="empty">Aucun résultat</div>';}
@@ -1454,6 +1702,7 @@ window.addEventListener("focus",()=>{if(H.dl&&PERM.dl==="granted")scanDl();});
   render();startWatch();
   if(S.trends.date<lastThursday())await refreshTrends(true);else analyzeQueue(S.trends.items);
   if(S.tracks.length&&(!S.disc.date||Date.now()-S.disc.date>7*864e5))loadDiscovery(true);else analyzeQueue(S.disc.items||[]);
+  if("serviceWorker" in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register("sw.js").catch(()=>{});
   if(!DB.ok)toast("Stockage indisponible dans ce navigateur : tes données ne seront pas gardées après fermeture.",false,true);
 })();
 </script>
