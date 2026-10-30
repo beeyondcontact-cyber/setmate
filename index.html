@@ -280,7 +280,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.8";
+const VERSION="1.8.1";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -435,7 +435,7 @@ async function analyzeFile(file){
   let buf;const ext=file.name.split(".").pop().toLowerCase();
   if(ext==="mp3"&&file.size>3e6){const mid=Math.floor(file.size/2);buf=await file.slice(Math.max(0,mid-1.5e6),mid+1.5e6).arrayBuffer();}
   else{if(file.size>120e6)throw new Error("fichier trop gros");buf=await file.arrayBuffer();}
-  return smAnalyze(await decodeBytes(buf));
+  return analyzeOff(await decodeBytes(buf),45);
 }
 
 /* ===================== LECTURE DES TAGS (fichiers ajoutés hors Serato) ===================== */
@@ -1223,11 +1223,11 @@ function toggleStyle(k){S.styles[k]=S.styles[k]?0:1;save();loadDiscovery();}
 /* ---------- Analyse des extraits ---------- */
 async function analyzeDz(x){if(S.trendCache[x.dz])return S.trendCache[x.dz];
   try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`,8000,"low");if(!d.preview)return null;
-    const buf=await (await fetch(d.preview)).arrayBuffer();const r=smAnalyze(await decodeBytes(buf),30);
+    const buf=await (await fetch(d.preview)).arrayBuffer();const r=await analyzeOff(await decodeBytes(buf),30);
     if(r){S.trendCache[x.dz]={bpm:r.bpm,k:r.key,e:r.energy,kc:r.keyConf};const keys=Object.keys(S.trendCache);if(keys.length>3000)keys.slice(0,500).forEach(k=>delete S.trendCache[k]);save();return S.trendCache[x.dz];}}catch(e){}return null;}
 const anaQ=[];let anaQRun=false;
 function analyzeQueue(list){list.forEach(x=>{if(x&&!S.trendCache[x.dz]&&!anaQ.some(y=>y.dz===x.dz))anaQ.push(x);});if(!anaQRun)runAnaQ();}
-async function runAnaQ(){anaQRun=true;let n=0;while(anaQ.length){const x=anaQ.shift();await analyzeDz(x);n++;if(n%4===0)liveRefresh();await sleep(120);}anaQRun=false;liveRefresh();}
+async function runAnaQ(){anaQRun=true;let n=0;while(anaQ.length){while(!calm())await sleep(250);const x=anaQ.shift();try{await analyzeDz(x);}catch(e){}n++;if(n%6===0)liveRefresh();await sleep(250);}anaQRun=false;liveRefresh();}
 
 /* ---------- Recherche libre ---------- */
 async function doSearch(q){q=(q||"").trim();S.search={q,items:[],busy:!!q};softRender();if(!q)return;
@@ -2096,6 +2096,44 @@ VIEWS.home=()=>{const h=_vHome2(),a=qList().length+tList().length,r=dList().leng
     <div class="card clk" onclick="S.trTab='liste';S.recTab='done';save();go('trend')"><div class="hint">Récupérés</div><div class="big" style="color:var(--green)">${r}</div><div class="hint">prêts pour tes sets</div></div></div>`;};
 NEWS["1.8"]=["<b>Découverte sans fin</b> : plus d’erreur quand Deezer sature, SetMate attend et reprend tout seul. La liste se prolonge quand tu descends.","<b>À récupérer en 3 étapes</b> : File d’attente, À récupérer, Récupérés. Boutons tout en haut : <b>Vider la file</b>, <b>Tout marquer récupéré</b>, sélection multiple.","<b>Le +</b> met le son dans Ma musique et dans la playlist <b>Mes pépites</b>.","<b>Sélectionner plusieurs</b> sons (Tendances, Découverte) pour les ajouter d’un coup."];
 
+/* ===================== 1.8.1 Fin des « spasmes » : l'écran ne bouge plus sous le doigt =====================
+   Causes mesurées dans la 1.8 (30/10/2026, ordinateur rapide) :
+   - 5 redessins complets de la page en 10 s sans toucher l'écran (l'analyse des sons rafraîchit tout l'écran) ;
+   - 27 tâches longues, 3,7 s d'interface bloquée en 18 s : une seule analyse (décodage + FFT) bloque 560 ms.
+   Corrections : (1) l'analyse tourne dans un second fil (worker), (2) les rafraîchissements automatiques attendent que le doigt
+   soit levé et l'écran immobile, et sont espacés, (3) l'analyse attend aussi le calme. */
+
+/* ---------- Savoir si le doigt est posé ou si l'écran défile ---------- */
+let touching=false,gsTouchAt=0,lastScr=0,lrT=null,lrLast=0;
+const calm=()=>!touching&&Date.now()-gsTouchAt>600&&Date.now()-lastScr>600;
+document.addEventListener("touchstart",()=>{touching=true;gsTouchAt=Date.now();},{passive:true,capture:true});
+["touchend","touchcancel"].forEach(n=>document.addEventListener(n,()=>{touching=false;gsTouchAt=Date.now();},{passive:true,capture:true}));
+window.addEventListener("scroll",()=>{lastScr=Date.now();},{passive:true,capture:true});
+{const m=$("#main");if(m)m.addEventListener("scroll",()=>{lastScr=Date.now();},{passive:true});}
+
+/* ---------- Rafraîchissements automatiques : jamais pendant un geste, au plus un toutes les 3 s ---------- */
+const _liveRefresh=liveRefresh;
+liveRefresh=function(){const wait=!calm()?650:Math.max(0,3000-(Date.now()-lrLast));
+  if(wait>0){if(!lrT)lrT=setTimeout(()=>{lrT=null;liveRefresh();},wait);return;}
+  lrLast=Date.now();_liveRefresh();};
+
+/* ---------- L'analyse audio quitte le fil principal ---------- */
+const SMW=(()=>{try{const src=[smFFT.toString(),smAnalyze.toString(),"const MAJOR="+JSON.stringify(MAJOR)+",MINOR="+JSON.stringify(MINOR)+";",
+  "onmessage=e=>{const {id,data,sr,sec}=e.data;try{const f=new Float32Array(data);postMessage({id,r:smAnalyze({sampleRate:sr,length:f.length,numberOfChannels:1,getChannelData:()=>f},sec)});}catch(err){postMessage({id,err:String(err&&err.message||err)});}};"].join("\n");
+  const w=new Worker(URL.createObjectURL(new Blob([src],{type:"text/javascript"})));w.onerror=()=>{logErr&&logErr("worker","analyse audio indisponible");smwOK=false;};return w;}catch(e){return null;}})();
+let smwOK=!!SMW,smId=0;const smPend=new Map();
+if(SMW)SMW.onmessage=e=>{const p=smPend.get(e.data.id);if(!p)return;smPend.delete(e.data.id);e.data.err?p.rej(new Error(e.data.err)):p.res(e.data.r);};
+/** Même calcul qu'avant (smAnalyze), mais dans le worker : l'interface ne se fige plus. */
+function analyzeOff(ab,sec){if(!smwOK||!SMW)return Promise.resolve(smAnalyze(ab,sec));
+  const n=ab.length,ch=ab.numberOfChannels,mono=new Float32Array(n);
+  for(let c=0;c<ch;c++){const d=ab.getChannelData(c);for(let i=0;i<n;i++)mono[i]+=d[i]/ch;}
+  return new Promise((res,rej)=>{const id=++smId;smPend.set(id,{res,rej});setTimeout(()=>{if(smPend.has(id)){smPend.delete(id);rej(new Error("analyse trop longue"));}},60000);SMW.postMessage({id,data:mono.buffer,sr:ab.sampleRate,sec},[mono.buffer]);});}
+
+/* ---------- File d'analyse : un son à la fois, seulement quand l'écran est calme ---------- */
+const _analyzeQueue=analyzeQueue;
+analyzeQueue=function(list){_analyzeQueue(list);if(anaQ.length>60)anaQ.splice(0,anaQ.length-60);};   // on garde les 60 plus récents
+
+NEWS["1.8.1"]=["<b>Fin des tremblements</b> : l’analyse des sons tourne maintenant en arrière-plan et l’écran ne se redessine plus pendant que ton doigt est posé ou que tu défiles."];
 /* ===================== FENÊTRES, RECHERCHE, CLAVIER ===================== */
 function modal(html){$("#layer").innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal" role="dialog">${html}</div></div>`;}
 function closeModal(){$("#layer").innerHTML="";}
