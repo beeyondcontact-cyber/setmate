@@ -1,0 +1,14 @@
+{
+  "name": "setmate-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tests automatiques de SetMate (Chrome et moteur Safari)",
+  "scripts": {
+    "test": "playwright test",
+    "test:chrome": "playwright test --project=chrome",
+    "test:safari": "playwright test --project=iphone-safari"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
