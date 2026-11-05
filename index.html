@@ -609,7 +609,7 @@ function renderBanner(){
   if(S.demo)b.innerHTML=`<div class="banner">Mode démo : sons d’exemple. Rien n’est écrit dans Serato. <span class="tsp"></span><button class="btn sm orange" onclick="leaveDemo()">${MOBILE&&!FSA?"Quitter la démo":"Connecter ma vraie bibliothèque"}</button></div>`;
   else if(need.length)b.innerHTML=`<div class="banner blue">Ton navigateur demande de reconfirmer l’accès à : ${need.map(k=>({serato:"Serato",music:"Musique",dl:"Téléchargements"})[k]).join(", ")}. <span class="tsp"></span><button class="btn sm" onclick="reconnect()">Reconnecter</button></div>`;
   else if(!FSA&&MOBILE)b.innerHTML=`<div class="banner blue">Sur téléphone : tendances, écoute, débrief vocal et soirées. Le rangement et Serato se font sur le Mac, avec Chrome.</div>`;
-  else if(!FSA)b.innerHTML=`<div class="banner">Ce navigateur ne permet pas d’écrire dans tes dossiers. Ouvre SetMate dans <b>Chrome</b> ou <b>Edge</b> pour créer les crates et copier sur clé. Ici : lecture et téléchargement des crates.</div>`;
+  else if(!FSA)b.innerHTML=`<div class="banner">Ce navigateur ne permet pas d’écrire dans tes dossiers. Ouvre SetMate dans <b>Chrome</b> ou <b>Edge</b> pour copier sur clé. Ici : lecture et export de playlists M3U8 (compatibilité réelle non testée).</div>`;
   else b.innerHTML="";
 }
 async function reconnect(){for(const k of ["serato","music","dl"])if(H[k]&&PERM[k]!=="granted")await ensurePerm(k,modeOf(k));

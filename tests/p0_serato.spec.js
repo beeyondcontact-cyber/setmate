@@ -85,6 +85,24 @@ test("P0-04 Réglages : plus d'interrupteur pour désactiver le contrôle (A-01)
   expect(erreurs).toEqual([]);
 });
 
+test("P0-04 une sauvegarde restaurée par le vrai parcours (Restaurer) avec l'ancien réglage coupé ne rend pas la porte permissive", async ({ page }) => {
+  const erreurs = await ouvrir(page);
+  // vraie sauvegarde produite par l'appli (mode démo), puis altérée : l'ancien interrupteur est coupé et la version Serato vaut « 3 »
+  const json = await page.evaluate(async () => { enterDemo(); let txt = null; const od = window.download; window.download = b => { b.text().then(t => { txt = t; }); }; exportData(); window.download = od; for (let i = 0; i < 50 && !txt; i++) await sleep(20); return txt; });
+  const sauv = JSON.parse(json); sauv.state.flags = { seratover: false, reco2: true }; sauv.state.seratoVer = "3";
+  const [fc] = await Promise.all([page.waitForEvent("filechooser"), page.evaluate(() => importData())]);
+  await fc.setFiles({ name: "sauvegarde.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(sauv)) });
+  await expect(page.locator(".modal h2")).toContainText(/Remplacer les données/);
+  await page.locator(".modal button.red").click();
+  await expect(page.locator("#toasts")).toContainText(/Données restaurées/);
+  const r = await page.evaluate(async () => { const flags = JSON.stringify(S.flags), ver = S.seratoVer; const gate = await seratoGate(); go("settings"); return { flags, ver, gate, checkbox: /S\.flags\.seratover/.test(document.querySelector("#main").innerHTML) }; });
+  expect(JSON.parse(r.flags).seratover, "l'état altéré a bien été restauré").toBe(false);
+  expect(r.ver).toBe("3");
+  expect(r.gate, "la porte refuse malgré tout").toBe(false);
+  expect(r.checkbox, "aucun interrupteur affiché").toBe(false);
+  expect(erreurs).toEqual([]);
+});
+
 // ---------- 2. Aucune écriture dans _Serato_ (contrôle du code source) ----------
 test("P0-04 code : l'unique écriture de fichier est la copie de fichiers audio, jamais dans Serato", async () => {
   const code = html.match(/<script>([\s\S]*)<\/script>\s*<\/body>/)[1];

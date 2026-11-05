@@ -6,7 +6,7 @@ const fs = require("fs"), os = require("os"), path = require("path");
 const ci = require("./verif_ci"), dep = require("./verif_deploiement");
 
 const racine = path.resolve(__dirname, "..");
-const YML = fs.readFileSync(path.join(racine, ".github", "workflows", "tests.yml"), "utf8");
+const YML = fs.readFileSync(path.join(racine, ".github", "workflows", "tests.yml"), "utf8").replace(/\r\n/g, "\n");   // un checkout Windows peut mettre des CRLF
 const SPECS = fs.readdirSync(__dirname).filter(f => f.endsWith(".spec.js")).sort();
 test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== "chrome", "contrôle de fichiers, une seule fois suffit"); });
 

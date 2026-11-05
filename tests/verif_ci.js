@@ -5,7 +5,8 @@ const fs = require("fs"), path = require("path");
 
 function verifier(yml, specs) {
   const pb = [];
-  const lignes = yml.split(/\r?\n/);
+  yml = yml.replace(/\r\n/g, "\n");                                          // même résultat sous Windows (CRLF) et Linux (LF)
+  const lignes = yml.split("\n");
   const code = lignes.filter(l => !/^\s*#/.test(l)).join("\n");           // sans les commentaires
   // permissions minimales
   if (!/^permissions:\s*\n\s+contents:\s*read\s*$/m.test(code)) pb.push("permissions de premier niveau : doit être exactement « contents: read »");
