@@ -11,6 +11,9 @@ const sabotages = [
   { nom: "P0-01 : une transaction annulée est de nouveau annoncée comme réussie", projet: "chrome", test: "P0-01 transaction annulée", de: "tx.onabort=()=>fail(tx.error||reqErr);", vers: "tx.onabort=()=>{done=true;res();};" },
   { nom: "P0-01 : la relecture de vérification est supprimée", projet: "chrome", test: "P0-01 relecture", de: "if(bad){fail(null,\"verify\");}else{done=true;res();}", vers: "done=true;res();" },
   { nom: "P0-01 : pagehide ne force plus l'écriture", projet: "chrome", test: "P0-01 fermeture de page", de: 'window.addEventListener("pagehide",()=>{if(SAVE.dirty||tracksDirty)flushSave().catch(()=>{});});', vers: "" },
+  { nom: "P0-02 : la restauration n'exige plus de sauvegarde valide", projet: "chrome", test: "P0-02 refus avant application : anomalie connue", de: "if(!r.ok){showRestoreError(r.errors);return false;}return restoreState(r);", vers: "return restoreState(r.ok?r:{info:{version:'x',tracks:0,pls:0,gigs:0,own:0,setName:null,setCount:0},warnings:[],state:JSON.parse(txt).state});" },
+  { nom: "P0-02 : la copie de secours de l'état précédent n'est plus écrite", projet: "chrome", test: "P0-02 sauvegarde valide réelle", de: 'await DB.set("backup_prev",', vers: 'await DB.set("backup_prev_x",' },
+  { nom: "P0-02 : l'état est appliqué en mémoire avant l'écriture vérifiée", projet: "chrome", test: "P0-02 interruption pendant l'écriture", de: 'await DB.setMany([["state",st],["tracks",tracks]]);          // refusé', vers: 'S.tracks=tracks;await DB.setMany([["state",st],["tracks",tracks]]).catch(()=>{});          // refusé' },
   { nom: "version : index.html et sw.js divergent", projet: "chrome", test: "charge sans erreur", de: /const VERSION="([^"]+)"/, vers: 'const VERSION="0.0.0-sabotage"' }
 ];
 let tous = true;

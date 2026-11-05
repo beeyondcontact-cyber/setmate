@@ -1466,8 +1466,11 @@ VIEWS.settings=()=>{const st=k=>H[k]?(PERM[k]==="granted"?'<span class="tag ok">
     <div class="row mt2"><button class="btn ghost sm" onclick="resetExclusions()">Remettre les sons écartés (${excludedCount()})</button><button class="btn ghost sm" onclick="showSuggLog()">Journal des suggestions</button></div></div></div>`;};
 function showSuggLog(){const rows=SESS.log.slice(-60).reverse();
   modal(`<h2>Journal des suggestions</h2><p class="hint">Pourquoi un son n’est plus proposé (cette session seulement, rien n’est envoyé).</p><div class="mt" style="max-height:50vh;overflow:auto">${rows.length?rows.map(r=>`<div class="mini"><span class="hint" style="width:44px">${new Date(r.at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</span><div style="flex:1;min-width:0"><b>${esc(r.t)}</b><div class="hint">${esc(r.reason)}</div></div></div>`).join(""):'<p class="hint">Rien pour l’instant.</p>'}</div><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">OK</button></div>`);}
-function exportData(){const st={...S,undo:undefined};download(new Blob([JSON.stringify({setmate:VERSION,date:Date.now(),state:st})],{type:"application/json"}),`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`);toast("Sauvegarde téléchargée.");}
-function importData(){const i=$("#fileIn");i.accept=".json";i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!d.setmate)throw new Error("fichier non reconnu");await restoreState(d);}catch(e){toast("Restauration impossible : "+esc(e.message),false,true);}i.value="";};i.click();}
+const backupObj=()=>({setmate:VERSION,schema:SCHEMA,date:Date.now(),state:{...snapState(),tracks:S.tracks}});
+function exportData(){download(new Blob([JSON.stringify(backupObj())],{type:"application/json"}),`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`);toast("Sauvegarde téléchargée.");}
+function importData(){const i=$("#fileIn");i.accept=".json,application/json";i.multiple=false;i.onchange=async()=>{const f=i.files&&i.files[0];
+  try{if(!f)return;if(f.size>RESTORE_MAX_BYTES){showRestoreError(validateBackup(null,f.size).errors);return;}
+    await importText(await f.text(),f.size);}catch(e){showRestoreError(["Le fichier n’a pas pu être lu : "+e.message]);}finally{i.value="";}};i.click();}
 function resetAll(){modal(`<h2>Tout effacer ?</h2><p class="hint mt2">Efface les données SetMate de ce navigateur (bibliothèque lue, soirées, débriefs, préférences). Tes fichiers et ta bibliothèque Serato ne sont pas touchés.</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn red" onclick="doReset()">Effacer</button></div>`);}
 async function doReset(){try{await DB.delMany(["state","tracks","backup_prev","h_serato","h_music","h_dl",...(S.own||[]).map(o=>"file_"+o.fid)]);}catch(e){closeModal();return toast("Effacement impossible : "+esc(e.message)+" Tes données n’ont pas été touchées.",false,true);}location.reload();}
 
@@ -1799,8 +1802,8 @@ async function shareOut({title,text,file,name,type}){
 const songOf=x=>{const t=x&&x.n?T(x.n)||x:x;return t?{t:t.t,a:t.a,dz:t.dz||null,cover:t.cover||null,pop:t.pop,aid:t.aid}:null;};
 function shareList(title,list){const items=list.map(songOf).filter(x=>x&&x.t);if(!items.length)return toast("Liste vide.",false,true);
   shareOut({title,text:title+"\n\n"+items.map((x,i)=>`${i+1}. ${x.a?x.a+" - ":""}${x.t}`).join("\n")+"\n\nPréparé avec SetMate"});}
-async function shareData(){const st={...S,undo:undefined},name=`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`;
-  const ok=await shareOut({title:"Sauvegarde SetMate",file:new Blob([JSON.stringify({setmate:VERSION,date:Date.now(),state:st})],{type:"application/json"}),name,type:"application/json"});
+async function shareData(){const name=`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`;
+  const ok=await shareOut({title:"Sauvegarde SetMate",file:new Blob([JSON.stringify(backupObj())],{type:"application/json"}),name,type:"application/json"});
   if(ok==="partage")toast("Envoyé. Sur l’autre appareil : Réglages, Recevoir des données, puis choisis ce fichier. Tes fichiers audio ne sont pas dedans.");else if(ok==="fichier")toast("Sauvegarde téléchargée dans Fichiers. Envoie-la toi-même (AirDrop, WhatsApp), puis Recevoir des données.");}
 
 /* ---------- Enregistrer en playlist, depuis n’importe quelle liste ---------- */
@@ -1923,16 +1926,103 @@ const NEWS={"1.6":["<b>Coller</b> (Écouter) : copie un lien Deezer ou une liste
 function showNews(){const n=NEWS[VERSION];if(!n)return;modal(`<h2>Nouveau dans SetMate ${VERSION}</h2><ul class="mt" style="padding-left:20px;line-height:1.7">${n.map(x=>`<li>${x}</li>`).join("")}</ul><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">C’est parti</button></div>`);}
 function checkNews(){if(S.seenV===VERSION)return;const old=S.onboarded||S.tracks.length||(S.pls||[]).length;S.seenV=VERSION;save();if(old)showNews();}
 
-/* ---------- Restauration prudente : on dit ce qui sera remplacé, on garde les fichiers de cet appareil ---------- */
-function confirmRestore(d){const st=d.state||{};return new Promise(res=>{window._rs=res;
-  modal(`<h2>Remplacer les données de cet appareil ?</h2><p class="hint mt2">Sauvegarde du ${new Date(d.date||Date.now()).toLocaleDateString("fr-FR")} : ${pl((st.tracks||[]).length||0,"son")} lus, ${pl((st.pls||[]).length,"playlist")}, ${pl((st.gigs||[]).length,"soirée")}.</p>
-   <p class="hint mt2">Ici, actuellement : ${pl(S.pls.length,"playlist")}, ${pl(S.gigs.length,"soirée")}, ${pl((S.own||[]).length,"fichier")} sur ce téléphone. <b style="color:var(--txt)">Tout ça sera remplacé</b> par la sauvegarde (sauf les fichiers audio de ce téléphone, qui restent). Pense à envoyer tes données d’ici avant si elles comptent.</p>
+/* ---------- Sauvegarde et restauration sûres (P0-02) ----------
+   Ordre : lire, VALIDER (rien n'est appliqué), montrer l'aperçu, copier l'état actuel (« backup_prev »),
+   écrire l'état restauré en UNE transaction vérifiée, puis seulement l'appliquer en mémoire. Un échec ne change rien. */
+const SCHEMA=1;let RESTORE_MAX_BYTES=120*1024*1024;
+const bkObj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x),bkStr=x=>typeof x==="string",bkInt=x=>Number.isInteger(x),bkNum=x=>typeof x==="number"&&isFinite(x),bkBool=x=>typeof x==="boolean",bkArr=Array.isArray;
+const bkOpt=f=>x=>x==null||f(x);
+const BK_ID=/^[A-Za-z0-9_-]{1,64}$/;
+const BK_SHAPE={
+  tracks:["la liste des sons","une liste",bkArr],name:["le nom","du texte",bkStr],demo:["le mode démo","oui ou non",bkBool],realSnap:["la copie de la bibliothèque réelle","un objet",bkOpt(bkObj)],
+  nextN:["le prochain numéro de son","un nombre entier positif",x=>bkInt(x)&&x>=1],userRoot:["le dossier de base","du texte",bkStr],musicPrefix:["le préfixe musique","du texte",bkStr],
+  set:["le set en cours","un objet avec un nom et une liste de numéros de sons",x=>bkObj(x)&&bkStr(x.name)&&bkArr(x.ids)&&x.ids.every(bkInt)],
+  cur:["le son courant","un numéro de son ou rien",bkOpt(bkInt)],dir:["le sens de recherche","du texte",bkStr],crates:["les crates","un objet",bkObj],
+  L:["les sons appris (L)","un objet",bkObj],P:["les enchaînements appris (P)","un objet",bkObj],rules:["les règles","une liste",bkArr],genreFix:["les genres corrigés","un objet",bkObj],
+  todo:["la liste à récupérer","une liste",bkArr],notifs:["les notifications","une liste",bkArr],gigs:["les soirées","une liste",bkArr],created:["les créations","une liste",bkArr],
+  trends:["les tendances","un objet avec une liste « items »",x=>bkObj(x)&&bkArr(x.items)&&bkOpt(bkNum)(x.date)],trendCache:["le cache des tendances","un objet",bkObj],genres:["les genres suivis","un objet",bkObj],
+  dlLast:["la date du dernier téléchargement","un nombre",bkNum],onboarded:["l’accueil","oui ou non",bkBool],
+  disc:["les découvertes","un objet",x=>bkObj(x)&&bkOpt(bkArr)(x.items)&&bkOpt(bkArr)(x.extra)],found:["les sons trouvés","un objet",bkObj],styles:["les styles","un objet",bkObj],tips:["les astuces vues","un objet",bkObj],
+  trTab:["l’onglet tendances","du texte",bkStr],flags:["les options","un objet",bkObj],reco:["les réglages de reco","un objet",bkObj],seratoVer:["la version de Serato","du texte ou rien",bkOpt(bkStr)],
+  seratoDbAge:["l’âge de la base Serato","un nombre ou rien",bkOpt(bkNum)],pls:["les playlists","une liste",bkArr],own:["les fichiers du téléphone","une liste",bkArr],lsTab:["l’onglet écoute","du texte",bkStr],
+  seenV:["la version vue","du texte",bkStr],am:["les liens Apple Music","un objet",bkObj],recTab:["l’onglet récupérer","du texte",bkStr]};
+function bkParseVer(v){const m=bkStr(v)&&v.match(/^(\d+)\.(\d+)(?:\.(\d+))?(?:[-+][\w.+-]*)?$/);return m?[+m[1],+m[2],+(m[3]||0)]:null;}
+/** Vérifie le contenu (fiches de sons, playlists, soirées...). Les clés qui finissent dans un gestionnaire onclick sont strictement limitées. */
+function bkCheckItems(st,E){
+  const strOrNull=(o,fs)=>fs.find(f=>o[f]!=null&&!bkStr(o[f]));
+  if(bkArr(st.tracks)){if(st.tracks.length>300000)E("Trop de sons dans la sauvegarde (plus de 300 000).");
+    const seen=new Set();let bad=0;
+    for(let i=0;i<st.tracks.length&&bad<3;i++){const t=st.tracks[i],w="Son n°"+(i+1);
+      if(!bkObj(t)){E(w+" : ce n’est pas une fiche de son.");bad++;continue;}
+      if(!bkInt(t.n)||t.n<1){E(w+" : le numéro « n » doit être un nombre entier positif.");bad++;continue;}
+      if(seen.has(t.n)){E(w+" : le numéro "+t.n+" apparaît deux fois.");bad++;continue;}seen.add(t.n);
+      const f=strOrNull(t,["t","a","path","g","sg","k","cover","era","src","why"]);if(f){E(w+" : « "+f+" » doit être du texte.");bad++;continue;}
+      if(t.dz!=null&&!bkInt(t.dz)){E(w+" : « dz » doit être un nombre entier.");bad++;continue;}
+      if(t.aid!=null&&!bkInt(t.aid)){E(w+" : « aid » doit être un nombre entier.");bad++;}}}
+  const lst=(arr,nom,fn)=>{if(!bkArr(arr))return;let bad=0;for(let i=0;i<arr.length&&bad<3;i++){const m=fn(arr[i],nom+" n°"+(i+1));if(m){E(m);bad++;}}};
+  lst(st.pls,"Playlist",(p,w)=>{if(!bkObj(p))return w+" : ce n’est pas une playlist.";if(!bkStr(p.id)||!BK_ID.test(p.id))return w+" : identifiant incorrect (lettres, chiffres, tiret).";
+    if(!bkStr(p.name))return w+" : le nom doit être du texte.";if(!bkArr(p.items))return w+" : la liste des sons est absente.";if(p.cover!=null&&!bkStr(p.cover))return w+" : la pochette doit être du texte.";
+    for(const x of p.items){if(!bkObj(x))return w+" : un son de la liste est incorrect.";if(strOrNull(x,["t","a","cover"]))return w+" : un son a un titre, un artiste ou une pochette qui n’est pas du texte.";
+      if(x.dz!=null&&!bkInt(x.dz))return w+" : un son a un numéro Deezer incorrect.";if(x.aid!=null&&!bkInt(x.aid))return w+" : un son a un numéro d’artiste incorrect.";if(x.fid!=null&&!(bkStr(x.fid)&&BK_ID.test(x.fid)))return w+" : un son a un identifiant de fichier incorrect.";
+      if(x.n!=null&&!bkInt(x.n))return w+" : un son a un numéro incorrect.";}return null;});
+  lst(st.own,"Fichier du téléphone",(o,w)=>{if(!bkObj(o))return w+" : fiche incorrecte.";if(!bkStr(o.fid)||!BK_ID.test(o.fid))return w+" : identifiant de fichier incorrect.";if(strOrNull(o,["t","a","type"]))return w+" : titre, artiste ou type qui n’est pas du texte.";return null;});
+  lst(st.gigs,"Soirée",(g,w)=>{if(!bkObj(g))return w+" : fiche incorrecte.";if(!bkInt(g.id))return w+" : l’identifiant doit être un nombre entier.";if(g.played!=null&&!bkArr(g.played))return w+" : la liste des sons joués est incorrecte.";return null;});
+  lst(st.notifs,"Notification",(n,w)=>{if(!bkObj(n))return w+" : fiche incorrecte.";if(n.go!=null&&!(bkStr(n.go)&&/^[a-z][a-z0-9_-]{0,29}$/.test(n.go)))return w+" : le lien d’écran est incorrect.";return null;});
+  if(bkObj(st.L)){for(const k of Object.keys(st.L)){if(!/^\d{1,12}$/.test(k)||!bkObj(st.L[k])){E("Les sons appris (« L ») contiennent une clé ou une valeur incorrecte.");break;}}}
+  if(bkObj(st.P)){for(const k of Object.keys(st.P)){if(!/^\d{1,12}>\d{1,12}$/.test(k)||!bkObj(st.P[k])){E("Les apprentissages d’enchaînements (« P ») contiennent une clé ou une valeur incorrecte.");break;}}}
+}
+/** Valide AVANT d'appliquer. Ne touche à rien. Renvoie {ok, errors[], warnings[], state (champs retenus), info}. */
+function validateBackup(text,size){
+  const err=[],warn=[];const E=m=>{if(err.length<8)err.push(m);else if(err.length===8)err.push("… et d’autres problèmes du même genre.");};
+  const fail=()=>({ok:false,errors:err,warnings:warn});
+  if(size!=null&&size>RESTORE_MAX_BYTES){E("Le fichier est trop volumineux ("+Math.round(size/1048576)+" Mo ; maximum "+Math.round(RESTORE_MAX_BYTES/1048576)+" Mo). Ce n’est probablement pas une sauvegarde SetMate.");return fail();}
+  if(typeof text!=="string"||!text.trim()){E("Le fichier est vide.");return fail();}
+  let d;try{d=JSON.parse(text,(k,v)=>k==="__proto__"?undefined:v);}catch(e){E("Ce fichier n’est pas lisible (JSON invalide) : il est abîmé, coupé, ou ce n’est pas une sauvegarde SetMate.");return fail();}
+  if(!bkObj(d)||!("setmate" in d)){E("Ce fichier n’est pas une sauvegarde SetMate (la marque « setmate » est absente).");return fail();}
+  const v=bkParseVer(d.setmate),cur=bkParseVer(VERSION);
+  if(!v){E("La version de cette sauvegarde (« "+String(d.setmate).slice(0,30)+" ») est inconnue : je ne sais pas la lire sans risque.");return fail();}
+  if(v[0]!==cur[0]||v[1]>cur[1]){E("Cette sauvegarde vient d’une version plus récente de SetMate ("+d.setmate+"). Mets SetMate à jour avant de la restaurer.");return fail();}
+  if(d.schema!=null&&(!bkInt(d.schema)||d.schema>SCHEMA)){E("Le format de données de cette sauvegarde est plus récent que celui de cette version de SetMate. Mets SetMate à jour avant de la restaurer.");return fail();}
+  const st=d.state;if(!bkObj(st)){E("La sauvegarde ne contient pas de données (le champ « state » est absent ou incorrect).");return fail();}
+  const out={},missing=[];
+  for(const k of Object.keys(BK_SHAPE)){const [lab,att,ok]=BK_SHAPE[k];
+    if(!(k in st)||st[k]===undefined){missing.push(lab);continue;}
+    if(!ok(st[k])){const got=st[k]===null?"rien":bkArr(st[k])?"une liste":typeof st[k]==="object"?"un objet":typeof st[k]==="string"?"du texte":typeof st[k]==="number"?"un nombre":"autre chose";E("« "+k+" » ("+lab+") devrait être "+att+" mais contient "+got+".");continue;}
+    out[k]=st[k];}
+  if(!err.length&&!["tracks","set","pls","gigs","own"].some(k=>k in out)){E("Aucune donnée SetMate reconnue dans ce fichier (ni sons, ni set, ni playlists, ni soirées).");}
+  if(!err.length)bkCheckItems(out,E);
+  if(err.length)return fail();
+  if(out.tracks){const mx=out.tracks.reduce((m,t)=>Math.max(m,t.n),0),want=out.nextN||S.nextN||1;if(want<=mx){out.nextN=mx+1;warn.push("Le numéro suivant a été corrigé automatiquement ("+(mx+1)+").");}}
+  if(missing.length)warn.push(pl(missing.length,"élément")+" absent"+(missing.length>1?"s":"")+" de cette sauvegarde (par exemple : "+missing.slice(0,3).join(", ")+") : "+(missing.length>1?"ils seront conservés":"il sera conservé")+" tel"+(missing.length>1?"s":"")+" qu’"+(missing.length>1?"ils sont":"il est")+" sur cet appareil.");
+  if(v[1]<cur[1])warn.push("Sauvegarde d’une ancienne version ("+d.setmate+") : elle est lue normalement.");
+  return {ok:true,errors:[],warnings:warn,state:out,info:{version:String(d.setmate),date:bkNum(d.date)?d.date:null,tracks:(out.tracks||[]).length,pls:(out.pls||[]).length,gigs:(out.gigs||[]).length,own:(out.own||[]).length,setName:out.set?out.set.name:null,setCount:out.set?out.set.ids.length:0,hasTracks:!!out.tracks}};}
+function showRestoreError(errs){modal(`<h2>Restauration impossible</h2><ul class="mt" style="padding-left:20px;line-height:1.6">${errs.map(e=>`<li>${esc(e)}</li>`).join("")}</ul><p class="hint mt2"><b style="color:var(--txt)">Tes données actuelles n’ont pas été modifiées.</b> Rien n’a changé.</p><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Compris</button></div>`);}
+function confirmRestore(r){const i=r.info;return new Promise(res=>{window._rs=res;
+  modal(`<h2>Remplacer les données de cet appareil ?</h2><p class="hint mt2">Sauvegarde SetMate ${esc(i.version)}${i.date?" du "+new Date(i.date).toLocaleDateString("fr-FR"):""} : ${i.hasTracks?pl(i.tracks,"son")+" lus, ":"sons inchangés, "}${pl(i.pls,"playlist")}, ${pl(i.gigs,"soirée")}${i.setName!=null?`, set « ${esc(i.setName)} » (${pl(i.setCount,"son")})`:""}.</p>
+   ${r.warnings.length?`<ul class="hint mt2" style="padding-left:20px">${r.warnings.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}
+   <p class="hint mt2">Ici, actuellement : ${pl(S.tracks.length,"son")}, ${pl(S.pls.length,"playlist")}, ${pl(S.gigs.length,"soirée")}, ${pl((S.own||[]).length,"fichier")} sur ce téléphone. <b style="color:var(--txt)">Tout ça sera remplacé</b> par la sauvegarde (sauf les fichiers audio de ce téléphone, qui restent).</p>
+   <p class="hint mt2">Avant de remplacer, SetMate garde automatiquement une copie de secours de l’état actuel : tu pourras annuler juste après.</p>
    <div class="row mt" style="justify-content:flex-end;gap:8px"><button class="btn ghost" onclick="closeModal();window._rs(false)">Annuler</button><button class="btn red" onclick="closeModal();window._rs(true)">Remplacer</button></div>`);});}
-async function restoreState(d){if(!(await confirmRestore(d)))return false;const cur=S.own||[],keep=S.undo;Object.assign(S,d.state);S.undo=keep;
-  const all=[...cur,...(S.own||[])],seen=new Set(),ok=[];
+/** Écrit l'état en UNE transaction vérifiée, puis l'applique en mémoire ; si l'application échoue, retour arrière (mémoire puis stockage). */
+async function applyStateAtomic(st,tracks){
+  const snap=snapState(),oldTracks=S.tracks;
+  await DB.setMany([["state",st],["tracks",tracks]]);          // refusé => rien n'a été touché, ni en mémoire ni en stockage
+  clearTimeout(saveT);saveT=null;
+  try{Object.assign(S,st);S.tracks=tracks;S.pls=S.pls||[];S.am=S.am||{};S.own=S.own||[];reindex();SAVE.dirty=false;tracksDirty=false;SAVE.fail=null;updSaveBadge();render();}
+  catch(e){Object.assign(S,snap);S.tracks=oldTracks;reindex();let b="";try{await DB.setMany([["state",snap],["tracks",oldTracks]]);}catch(e2){b=" Le stockage n’a pas pu être rétabli : utilise « Sauvegarder mes données » sans attendre.";}
+    try{render();}catch(e3){}const x=new Error("l’affichage a refusé les données restaurées ("+e.message+")."+b);x.rolledBack=true;throw x;}}
+async function importText(txt,size){const r=validateBackup(txt,size);if(!r.ok){showRestoreError(r.errors);return false;}return restoreState(r);}
+async function restoreState(r){if(!(await confirmRestore(r)))return false;
+  try{await DB.set("backup_prev",{setmate:VERSION,schema:SCHEMA,date:Date.now(),state:snapState(),tracks:S.tracks});}
+  catch(e){showRestoreError(["SetMate n’a pas pu garder une copie de l’état actuel ("+(e.quota?"stockage plein":"écriture refusée")+"). Par sécurité, la restauration est annulée."]);return false;}
+  const prev={state:snapState(),tracks:S.tracks};
+  const all=[...(S.own||[]),...(r.state.own||[])],seen=new Set(),ok=[];
   for(const o of all){if(seen.has(o.fid))continue;seen.add(o.fid);if(await DB.get("file_"+o.fid))ok.push(o);}
-  const lost=all.filter((o,i)=>all.findIndex(x=>x.fid===o.fid)===i).length-ok.length;S.own=ok;S.pls=S.pls||[];reindex();save(true);render();
-  toast(lost>0?`Données restaurées. ${pl(lost,"fichier")} audio de la sauvegarde ne sont pas sur ce téléphone : à rajouter.`:"Données restaurées.");return true;}
+  const lost=seen.size-ok.length,next={...prev.state,...r.state};delete next.tracks;next.own=ok;next.pls=next.pls||[];
+  try{await applyStateAtomic(next,r.state.tracks||S.tracks);}
+  catch(e){showRestoreError(["La restauration a échoué : "+(e.rolledBack?e.message:e.quota?"stockage plein.":"le navigateur n’a pas confirmé l’écriture.")+" Tes données précédentes sont intactes."]);return false;}
+  S.undo=[];pushUndo("restauration des données",()=>applyStateAtomic(prev.state,prev.tracks));
+  toast(lost>0?`Données restaurées. ${pl(lost,"fichier")} audio de la sauvegarde ne sont pas sur ce téléphone : à rajouter.`:"Données restaurées. Tu peux annuler pour revenir à l’état d’avant.",true);return true;}
 
 /* ===================== 1.7 Liens avec Apple Music et Spotify, sans compte développeur =====================
    - Retrouver un son dans Apple Music (API gratuite iTunes Search) : ouvrir dans Musique, lecteur Apple intégré.
