@@ -1,0 +1,93 @@
+[
+ {
+  "n": 1,
+  "t": "Calm Down",
+  "a": "Rema",
+  "path": "Users/ines/Music/DJ/Rema - Calm Down.mp3"
+ },
+ {
+  "n": 2,
+  "t": "Été à Paris",
+  "a": "Aya Nakamura",
+  "path": "Users/ines/Music/Été à Paris.mp3"
+ },
+ {
+  "n": 3,
+  "t": "أحبك",
+  "a": "فيروز",
+  "path": "Users/ines/Music/فيروز - أحبك.mp3"
+ },
+ {
+  "n": 4,
+  "t": "Ik ben een ijsbeer ĳs",
+  "a": "Zoë Çelik",
+  "path": "Users/ines/Music/Zoë Çelik - ijsbeer.mp3"
+ },
+ {
+  "n": 5,
+  "t": "Fête 🎉🔥 𝄞",
+  "a": "DJ Émoji",
+  "path": "Users/ines/Music/Fête 🎉🔥.mp3"
+ },
+ {
+  "n": 6,
+  "t": "Titre à récupérer",
+  "a": "Absent",
+  "path": "Users/ines/Music/absent.mp3",
+  "wish": true
+ },
+ {
+  "n": 7,
+  "t": "Windows D",
+  "a": "Artiste Lecteur",
+  "path": "D:\\Musique DJ\\Été 2026\\Track 01.mp3"
+ },
+ {
+  "n": 8,
+  "t": "Windows slash",
+  "a": "Artiste Mixte",
+  "path": "c:/Users/dj/Music/a b/c d.mp3"
+ },
+ {
+  "n": 9,
+  "t": "Réseau",
+  "a": "NAS",
+  "path": "\\\\NAS\\musique\\z.mp3"
+ },
+ {
+  "n": 10,
+  "t": "Lecteur relatif",
+  "a": "X",
+  "path": "D:fichier.mp3"
+ },
+ {
+  "n": 11,
+  "t": "Titre\nsur deux lignes",
+  "a": "Piège",
+  "path": "Users/ines/Music/ok.mp3"
+ },
+ {
+  "n": 12,
+  "t": "Chemin piégé",
+  "a": "Piège",
+  "path": "Users/ines/Music/a.mp3\n#EXTINF:-1,faux\n/etc/passwd"
+ },
+ {
+  "n": 13,
+  "t": "Manquant Serato",
+  "a": "Y",
+  "path": "Users/ines/Music/m.mp3",
+  "missing": true
+ },
+ {
+  "n": 14,
+  "t": "Sans artiste",
+  "a": "",
+  "path": "Users/ines/Music/sans artiste.mp3"
+ },
+ {
+  "n": 15,
+  "t": "Sans chemin",
+  "a": "Z"
+ }
+]
