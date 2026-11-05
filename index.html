@@ -286,6 +286,16 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
 const baseTitle=s=>norm(String(s||"").replace(/\((feat|ft|with|prod)[^)]*\)|\[[^\]]*\]|\b(feat|ft)\.? .*$/gi,"").replace(/\((extended|clean|dirty|explicit|radio edit|original mix|intro|edit|remaster(ed)?[^)]*)\)/gi,""));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+/* ---------- Adresses externes (P0-03) : https + domaines attendus uniquement, jamais d'adresse dans du code ---------- */
+const URL_ALLOW={open:["music.apple.com","itunes.apple.com","deezer.com"],img:["dzcdn.net","deezer.com","mzstatic.com"],media:["dzcdn.net"],api:["api.deezer.com"],embed:["embed.music.apple.com"]};
+function safeUrl(u,kind){try{if(typeof u!=="string"||!u||u.length>2000||/[\s"'<>\\`\u0000-\u001f]/.test(u))return null;const list=URL_ALLOW[kind];if(!list)return null;const x=new URL(u);
+  if(x.protocol!=="https:"||x.username||x.password||(x.port&&x.port!=="443"))return null;const h=x.hostname.toLowerCase(),exact=kind==="api"||kind==="embed";
+  return list.some(d=>h===d||(!exact&&h.endsWith("."+d)))?x.href:null;}catch(e){return null;}}
+/** Identifiant numérique (Deezer, Apple) : entier positif ou null. Tout le reste est écarté avant d'atteindre du HTML ou un gestionnaire onclick. */
+const intId=v=>{const n=typeof v==="number"?v:(typeof v==="string"&&/^\d{1,15}$/.test(v)?Number(v):NaN);return Number.isSafeInteger(n)&&n>0?n:null;};
+const NAV={go:u=>location.assign(u)};
+function openExternal(u,kind="open"){const ok=safeUrl(u,kind);if(!ok){toast("Lien refusé : adresse non reconnue ou non sûre.",false,true);return false;}NAV.go(ok);return true;}
+const dzMedia=u=>{const ok=safeUrl(u,"media");if(!ok)throw new Error("extrait refusé : adresse non reconnue");return ok;};
 const FSA=typeof window.showDirectoryPicker==="function";
 const MOBILE=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&matchMedia("(pointer:coarse)").matches);
 
@@ -522,7 +532,7 @@ const IC={home:'<path d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"
  dl:'<path d="M12 3v12M7 10l5 5 5-5M4 20h16"/>',refresh:'<path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7"/>'};
 const svg=(n,s=18,x="")=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${x}>${IC[n]}</svg>`;
 const initials=a=>String(a||"?").split(/[ ,&]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
-function cover(x,cls=""){const h=x.k?((kn(x.k)-1)*30+200)%360:220;const img=x.cover?`background-image:url(${esc(x.cover)});`:"";
+function cover(x,cls=""){const h=x.k?((kn(x.k)-1)*30+200)%360:220;const cu=safeUrl(x.cover,"img"),img=cu?`background-image:url('${esc(cu)}');`:"";
   return `<div class="cv ${cls}" style="background:linear-gradient(135deg,hsl(${h},70%,62%),hsl(${(h+50)%360},60%,38%));${img}">${img?"":esc(initials(x.a))}</div>`;}
 const nrg=e=>e?`<span class="nrg" data-tip="Énergie estimée ${e}/10"><i style="width:${e*10}%"></i></span>`:`<span class="hint" data-tip="Pas encore analysé">·</span>`;
 const D=s=>new Date(/^\d{4}-\d{2}-\d{2}$/.test(s)?s+"T00:00":s);
@@ -581,7 +591,8 @@ function renderNav(){
    `<div class="navsp"></div><button class="nb ${S.screen==="settings"?"on":""}" onclick="go('settings')">${svg("settings")}<span class="ll">Réglages</span><span class="ls">Réglages</span></button>
    <div class="navfoot">${S.demo?"<b style='color:var(--orange)'>Mode démo</b><br>":""}${dot("serato")}Serato<br>${dot("music")}Musique<br>${dot("dl")}Téléchargements<br>${visible().length} sons</div>`;
 }
-function go(s){S.screen=s;closeNotif();render();$("#main").scrollTop=0;}
+function go(s){if(typeof VIEWS[s]!=="function"){closeNotif();return;}   // écran inconnu (lien de notification abîmé) : on ne casse pas l'affichage
+  S.screen=s;closeNotif();render();$("#main").scrollTop=0;}
 const VIEWS={};
 function render(){renderNav();renderTop();renderBanner();$("#main").innerHTML=`<div class="screen">${VIEWS[S.screen]()}</div>`;if(S.screen==="lib")libTable();if(S.screen==="listen")listenAfter();renderPlayer();}
 function softRender(){const m=$("#main"),st=m.scrollTop,ws=window.scrollY;render();m.scrollTop=st;window.scrollTo(0,ws);}
@@ -604,7 +615,7 @@ function renderBanner(){
 async function reconnect(){for(const k of ["serato","music","dl"])if(H[k]&&PERM[k]!=="granted")await ensurePerm(k,modeOf(k));
   if(PERM.serato==="granted")await loadSerato(false);render();startWatch();}
 function toggleNotif(){const b=$("#notifBox");if(b.innerHTML){closeNotif();return;}
-  b.innerHTML=`<div class="notif">${S.notifs.length?S.notifs.slice().reverse().map(n=>`<div class="it" onclick="go('${n.go}')"><i style="${n.seen?"background:var(--line2)":""}"></i><div>${esc(n.txt)}<div class="hint">${fmtDate(n.date)}</div></div></div>`).join(""):'<div class="empty">Aucune notification</div>'}</div>`;
+  b.innerHTML=`<div class="notif">${S.notifs.length?S.notifs.slice().reverse().map(n=>`<div class="it" onclick="go('${jsq(n.go)}')"><i style="${n.seen?"background:var(--line2)":""}"></i><div>${esc(n.txt)}<div class="hint">${fmtDate(n.date)}</div></div></div>`).join(""):'<div class="empty">Aucune notification</div>'}</div>`;
   S.notifs.forEach(n=>n.seen=true);save();setTimeout(renderTop,300);}
 function closeNotif(){$("#notifBox").innerHTML="";}
 document.addEventListener("click",e=>{if(!e.target.closest(".notif")&&!e.target.closest("#bellBtn"))closeNotif();});
@@ -715,8 +726,8 @@ VIEWS.home=()=>{
   ${learnedN?`<div class="card mt clk" onclick="showLearned()"><div class="row between" style="flex-wrap:nowrap"><div><h3>J’ai retenu ${learnedN} chose${learnedN>1?"s":""} de tes soirées</h3><p class="hint">Tes suggestions en tiennent compte.</p></div><span class="go">→</span></div></div>`:""}`;
 };
 function showLearned(){
-  const rows=Object.entries(S.L).map(([n,v])=>{const t=T(+n);return t?`<div class="mini">${cover(t)}<div style="flex:1;min-width:0"><b>${esc(t.t)}</b><div class="hint">${esc(v.why)}</div></div><button class="mi" onclick="forget('L','${n}')" aria-label="Oublier">${svg("x",14)}</button></div>`:""}).join("")+
-    Object.entries(S.P).map(([k,v])=>{const [a,b]=k.split(">").map(Number);return T(a)&&T(b)?`<div class="mini"><span class="tag learn">Enchaînement</span><div style="flex:1;min-width:0"><b>${esc(T(a).t)} → ${esc(T(b).t)}</b><div class="hint">${esc(v.why)}</div></div><button class="mi" onclick="forget('P','${k}')">${svg("x",14)}</button></div>`:""}).join("")+
+  const rows=Object.entries(S.L).map(([n,v])=>{const t=T(+n);return t?`<div class="mini">${cover(t)}<div style="flex:1;min-width:0"><b>${esc(t.t)}</b><div class="hint">${esc(v.why)}</div></div><button class="mi" onclick="forget('L','${jsq(n)}')" aria-label="Oublier">${svg("x",14)}</button></div>`:""}).join("")+
+    Object.entries(S.P).map(([k,v])=>{const [a,b]=k.split(">").map(Number);return T(a)&&T(b)?`<div class="mini"><span class="tag learn">Enchaînement</span><div style="flex:1;min-width:0"><b>${esc(T(a).t)} → ${esc(T(b).t)}</b><div class="hint">${esc(v.why)}</div></div><button class="mi" onclick="forget('P','${jsq(k)}')">${svg("x",14)}</button></div>`:""}).join("")+
     S.rules.map((r,i)=>`<div class="mini"><span class="tag learn">Règle</span><div style="flex:1" class="hint">« ${esc(r)} »</div><button class="mi" onclick="forget('R',${i})">${svg("x",14)}</button></div>`).join("");
   modal(`<h2>Ce que j’ai retenu</h2><p class="hint">Appuie sur ✕ pour me faire oublier un point.</p><div class="mt">${rows||'<p class="hint">Rien pour l’instant.</p>'}</div><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">OK</button></div>`);
 }
@@ -790,7 +801,7 @@ function libSide(){
     <div class="row mt2" style="flex-wrap:nowrap">${cover(x,"xl")}<div style="min-width:0"><div class="big" style="font-size:18px;overflow:hidden;text-overflow:ellipsis">${esc(x.t)}</div><div class="hint">${esc(x.a)}${x.al?" · "+esc(x.al):""}</div>
       <div class="row mt2" style="gap:6px"><button class="btn sm" onclick="playTrack(${x.n})">${svg("play",12)}Écouter</button><button class="btn sm ghost" onclick="startFrom(${x.n})">Partir de ce son</button></div></div></div>
     <div class="grid g2 mt" style="gap:8px;font-size:13px"><div><span class="hint">BPM</span><br><b>${x.bpm?Math.round(x.bpm*10)/10:"?"}</b> <span class="hint">${x.bpmSrc==="est"?"estimé":x.bpm?"Serato":""}</span></div><div><span class="hint">Tonalité</span><br>${keyTag(x.k,x.kSrc==="est")} <span class="hint">${x.kSrc==="est"?"estimée":x.k?"Serato":""}</span></div>
-      <div><span class="hint">Énergie</span><br>${x.e?nrg(x.e)+" "+x.e+"/10":`<button class="btn sm ghost" onclick="analyzeOne(${x.n})">Analyser</button>`}</div><div><span class="hint">Époque</span><br><b>${esc(x.era)}</b>${x.year?` <span class="hint">${x.year}</span>`:""}</div>
+      <div><span class="hint">Énergie</span><br>${x.e?nrg(x.e)+" "+x.e+"/10":`<button class="btn sm ghost" onclick="analyzeOne(${x.n})">Analyser</button>`}</div><div><span class="hint">Époque</span><br><b>${esc(x.era)}</b>${x.year?` <span class="hint">${esc(x.year)}</span>`:""}</div>
       <div><span class="hint">Qualité</span><br><b style="color:${x.kbps&&x.kbps<192?"var(--red)":"inherit"}">${x.kbps?Math.round(x.kbps)+" kbps":"?"}</b></div><div><span class="hint">Dernière fois joué</span><br><b>${x.lastPlayed?"il y a "+Math.round((Date.now()-x.lastPlayed)/864e5)+" j":"pas de trace"}</b></div></div>
     <div class="card mt" style="background:var(--panel2);padding:12px"><div class="row between"><span class="hint">Genre ${x.manual?"(choisi par toi)":x.gSrc==="appris"?"(appris de tes corrections)":x.genreTag?"(tag : "+esc(x.genreTag)+")":"(aucun tag)"}</span><span style="color:${cc};font-weight:700;font-size:12px">${x.conf} %</span></div>
       <b>${esc(x.g==="?"?"Non classé":x.g)} › ${esc(x.sg)}</b><div class="prog" style="margin:8px 0"><i style="width:${x.conf}%;background:${cc}"></i></div>
@@ -888,13 +899,13 @@ function discoverSugg(){const cur=T(S.cur);if(!cur)return [];
   let l=onlinePool();if(flag("reco2"))l=l.filter(x=>!sessExcluded("dz"+x.dz));
   const out=l.map(x=>compat(cur,x,false)).filter(r=>r.s>=.7).sort((a,b)=>b.s-a.s).slice(0,3);
   if(flag("reco2"))markShown(out,cur.n+"|"+S.set.ids.join(","),o=>"dz"+o.c.dz,o=>o.c.t);return out;}
-const jsq=s=>esc(String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'"));
+const jsq=s=>esc(String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\r/g,"\\r").replace(/\n/g,"\\n").replace(/\u2028/g,"\\u2028").replace(/\u2029/g,"\\u2029"));
 function sugRow({c,s,why}){const [w,cl]=verdict(s);const main=[why[0][1],why[1][1],...why.filter(x=>x[0]==="learn").map(x=>x[1])].slice(0,3).join(" · ");const open=S.openWhy===c.n;
   return `<div class="sg"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}
     <div class="sgm" onclick="S.openWhy=${open?"null":c.n};softRender()"><div class="sgt"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span></div>${c.wish?'<span class="tag info">à récupérer</span> ':""}<div class="hint sgw">${esc(main)} · <u>${open?"moins":"pourquoi ?"}</u></div>${open?`<div class="why">${why.map(([t,l])=>`<span class="tag ${t}">${esc(l)}</span>`).join("")}</div>`:""}</div>
     <button class="play" onclick="playTrack(${c.n})" aria-label="Écouter">${svg(isPlaying(c)?"pause":"play",12)}</button>${flag("reco2")?`<button class="mi" onclick="dismissSugg('t${c.n}','${jsq(c.t)}')" aria-label="Pas pour ce set" title="Pas pour ce set">${svg("x",14)}</button>`:""}<button class="btn sm add" onclick="addSet(${c.n})" aria-label="Ajouter au set">${svg("plus",15)}</button></div>`;}
 function discRow({c,s}){const [w,cl]=verdict(s);const inL=inWish(c);const on=PL&&PL.u==="dz"+c.dz;
-  return `<div class="sg sgd"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}<div class="sgm"><div class="sgt"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span></div><div class="hint sgw">${Math.round(c.bpm)} BPM · ${c.k} · ${c.peu?"pépite peu connue":"en tendance"}</div></div>
+  return `<div class="sg sgd"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}<div class="sgm"><div class="sgt"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span></div><div class="hint sgw">${Math.round(c.bpm)} BPM · ${esc(c.k)} · ${c.peu?"pépite peu connue":"en tendance"}</div></div>
     <button class="play ${on?"on":""}" onclick="playDz(${c.dz})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>${flag("reco2")&&!inL?`<button class="mi" onclick="dismissSugg('dz${c.dz}','${jsq(c.t)}')" aria-label="Pas pour ce set" title="Pas pour ce set">${svg("x",14)}</button>`:""}<button class="btn sm ${inL?"ghost":"violet"}" onclick="addIdea(${c.dz})" ${inL?"disabled":""}>${inL?"✓ Ajouté":"+ Musique"}</button></div>`;}
 VIEWS.next=()=>{
   if(!S.tracks.length||!visible().length)return welcome();
@@ -925,7 +936,7 @@ function wheel(k,cov=coverage()){const cx=120,cy=120,P=(r,a)=>[cx+r*Math.cos(a*M
     const empty=!c&&!isC,op=isC?1:empty?.9:ks>=.85?.8:.16;
     o+=`<path d="${seg(r1+1,r2-1,a-14.2,a+14.2)}" fill="${isC?"#fff":empty?"transparent":keyColor(key)}" opacity="${op}" stroke="${empty?keyColor(key):S.keyF===key?"#fff":"none"}" stroke-width="${empty?1.5:2}" ${empty?'stroke-dasharray="3 3"':""}
       onclick="${empty?`findForKey('${key}')`:`S.keyF=S.keyF==='${key}'?null:'${key}';render()`}" data-tip="${key} · ${empty?"aucun son : touche pour en trouver":c+" son"+(c>1?"s":"")}"></path><text x="${tx}" y="${ty+3}" text-anchor="middle" fill="${empty?keyColor(key):op>.5?"#0b0b0d":"#8a8a96"}">${key}</text>`;}
-  return `<svg class="wheel" viewBox="0 0 240 240" style="width:100%;max-width:270px;display:block;margin:6px auto">${o}<circle cx="120" cy="120" r="40" fill="var(--panel)"/><text x="120" y="124" text-anchor="middle" fill="#fff" style="font-size:16px;font-weight:800">${k||"?"}</text></svg>`;}
+  return `<svg class="wheel" viewBox="0 0 240 240" style="width:100%;max-width:270px;display:block;margin:6px auto">${o}<circle cx="120" cy="120" r="40" fill="var(--panel)"/><text x="120" y="124" text-anchor="middle" fill="#fff" style="font-size:16px;font-weight:800">${esc(k||"?")}</text></svg>`;}
 /** Trouve des sons (en ligne) dans une tonalité absente de sa bibliothèque : écoute les extraits jusqu’à en trouver 5. */
 let keyHunt=null;
 async function findForKey(key){
@@ -1122,7 +1133,7 @@ VIEWS.gigs=()=>{const up=upGigs(),past=pastGigs();
     <div class="row between"><span class="hint">Préparation ${d}/${c.length}</span><div class="row" style="gap:6px"><button class="btn sm ghost" onclick="editGig(${g.id})">Modifier</button><button class="btn sm" onclick="linkSet(${g.id})">Préparer le set</button></div></div></div>`}).join(""):`<div class="card"><p class="hint">Aucune date à venir.</p></div>`}</div>
   <h3 class="mt">Passées</h3><div class="card mt2" style="padding:0">${past.length?`<table class="tbl"><thead><tr><th>Date</th><th>Lieu</th><th class="hm">Type</th><th>Sons</th><th>Débrief</th></tr></thead><tbody>
   ${past.map(g=>`<tr class="r" onclick="gigDetail(${g.id})"><td>${fmtDate(g.date)}</td><td><b>${esc(g.lieu)}</b></td><td class="hm">${esc(g.type)}</td><td>${g.played.length||'<span class="hint">0</span>'}</td><td>${g.deb?`<span class="tag ok">✓ ${pl(g.deb.n,"point")}</span>`:g.type==="Live / contenu"?'<span class="tag">pas besoin</span>':'<span class="tag warn">en attente</span>'}</td></tr>`).join("")}</tbody></table>`:`<div class="empty">Aucune soirée passée.</div>`}</div>`;};
-function gigForm(g){return `<div class="grid mt" style="gap:10px"><input class="f" id="gL" placeholder="Lieu ou client" value="${esc(g?.lieu||"")}"><div class="grid g2" style="gap:10px"><input class="f" type="date" id="gD" value="${g?.date||new Date().toISOString().slice(0,10)}"><select class="f" id="gT">${GIG_TYPES.map(t=>`<option ${g?.type===t?"selected":""}>${t}</option>`).join("")}</select></div>
+function gigForm(g){return `<div class="grid mt" style="gap:10px"><input class="f" id="gL" placeholder="Lieu ou client" value="${esc(g?.lieu||"")}"><div class="grid g2" style="gap:10px"><input class="f" type="date" id="gD" value="${esc(g?.date||new Date().toISOString().slice(0,10))}"><select class="f" id="gT">${GIG_TYPES.map(t=>`<option ${g?.type===t?"selected":""}>${t}</option>`).join("")}</select></div>
   <div class="grid g2" style="gap:10px"><input class="f" id="gTh" placeholder="Thème (ex. Afro night)" value="${esc(g?.theme||"")}"><input class="f" id="gH" placeholder="Horaires (ex. 23h · 4h)" value="${esc(g?.time||"")}"></div></div>`;}
 function newGig(){modal(`<h2>Nouvelle soirée</h2>${gigForm()}<div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="saveGig()">Créer</button></div>`);setTimeout(()=>$("#gL")&&$("#gL").focus(),50);}
 function editGig(id){const g=S.gigs.find(x=>x.id===id);modal(`<h2>Modifier la soirée</h2>${gigForm(g)}<div class="row mt" style="justify-content:space-between"><button class="btn ghost" style="color:var(--red)" onclick="delGig(${id})">Supprimer</button><div class="row"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="saveGig(${id})">Enregistrer</button></div></div>`);}
@@ -1180,10 +1191,10 @@ function histParse(txt,name,mtime){
 const SOURCES=[{id:"pl:1109890291",l:"Top France",g:null},{id:"chart:116",l:"Rap / Hip-hop",g:"rap"},{id:"chart:2",l:"Musique africaine",g:"afro"},{id:"chart:165",l:"R&B",g:"rnb"},{id:"pl:5964916564",l:"Amapiano",g:"amapiano"},{id:"chart:132",l:"Pop",g:"pop"}];
 const STYLES=[["amapiano","Amapiano"],["afrobeats","Afrobeats"],["afro house","Afro house"],["shatta","Shatta"],["dancehall","Dancehall"],["kompa","Kompa"],["zouk","Zouk"],["rap fr","Rap FR"],["drill fr","Drill"],["rnb","R&B"],["coupé décalé","Coupé-décalé"],["throwback rnb","Throwback"]];
 const PEU_CONNU=500000;   // popularité Deezer de 0 à 1 000 000 : en dessous, le son est peu écouté
-function jsonp(url,ms=8000){return new Promise((res,rej)=>{const cb="dz"+Date.now()+Math.floor(Math.random()*1e6),s=document.createElement("script");const clean=()=>{clearTimeout(to);delete window[cb];s.remove();};
+function jsonp(url,ms=8000){return new Promise((res,rej)=>{url=safeUrl(url,"api");if(!url)return rej(new Error("adresse refusée"));const cb="dz"+Date.now()+Math.floor(Math.random()*1e6),s=document.createElement("script");const clean=()=>{clearTimeout(to);delete window[cb];s.remove();};
   const to=setTimeout(()=>{clean();rej(new Error("délai dépassé"))},ms);window[cb]=d=>{clean();d&&d.error?rej(new Error(d.error.message||"erreur Deezer")):res(d)};s.onerror=()=>{clean();rej(new Error("réseau"))};
-  s.src=url+(url.includes("?")?"&":"?")+"output=jsonp&callback="+cb;document.body.appendChild(s);});}
-const dzItem=t=>({dz:t.id,t:t.title_short||t.title,a:t.artist?t.artist.name:"",cover:t.album&&t.album.cover_medium,pop:t.rank||0});
+  s.referrerPolicy="no-referrer";s.src=url+(url.includes("?")?"&":"?")+"output=jsonp&callback="+cb;document.body.appendChild(s);});}
+const dzItem=t=>({dz:intId(t.id),t:t.title_short||t.title,a:t.artist?t.artist.name:"",cover:safeUrl(t.album&&t.album.cover_medium,"img"),pop:t.rank||0});
 function lastThursday(){const d=new Date();d.setHours(8,0,0,0);while(d.getDay()!==4||d>new Date())d.setDate(d.getDate()-1);return d.getTime();}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
@@ -1280,7 +1291,7 @@ function toggleStyle(k){S.styles[k]=S.styles[k]?0:1;save();loadDiscovery();}
 /* ---------- Analyse des extraits ---------- */
 async function analyzeDz(x){if(S.trendCache[x.dz])return S.trendCache[x.dz];
   try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`,8000,"low");if(!d.preview)return null;
-    const buf=await (await fetch(d.preview)).arrayBuffer();const r=await analyzeOff(await decodeBytes(buf),30);
+    const buf=await (await fetch(dzMedia(d.preview))).arrayBuffer();const r=await analyzeOff(await decodeBytes(buf),30);
     if(r){S.trendCache[x.dz]={bpm:r.bpm,k:r.key,e:r.energy,kc:r.keyConf};const keys=Object.keys(S.trendCache);if(keys.length>3000)keys.slice(0,500).forEach(k=>delete S.trendCache[k]);save();return S.trendCache[x.dz];}}catch(e){}return null;}
 const anaQ=[];let anaQRun=false;
 function analyzeQueue(list){list.forEach(x=>{if(x&&!S.trendCache[x.dz]&&!anaQ.some(y=>y.dz===x.dz))anaQ.push(x);});if(!anaQRun)runAnaQ();}
@@ -1296,13 +1307,13 @@ async function doSearch(q){q=(q||"").trim();S.search={q,items:[],busy:!!q};softR
 function bestPlace(tx){return visible().filter(t=>!t.wish&&baseTitle(t.t)!==baseTitle(tx.t)).map(t=>({t,s:compat(t,tx,false).s})).filter(p=>p.s>=.6).sort((a,b)=>b.s-a.s)[0]?.t||null;}
 function trRow(x,showPos){const m=libMatch(x),own=m&&!m.wish,wish=m&&m.wish,c=S.trendCache[x.dz],tr=S.trends.items.find(y=>y.dz===x.dz),on=PL&&PL.u==="dz"+x.dz;
   const bp=c&&!own?bestPlace({t:x.t,a:x.a,bpm:c.bpm,k:c.k}):null;const mv=x.prev?x.prev-x.pos:null;
-  const meta=[c?`${Math.round(c.bpm)} BPM · ${c.k}`:"j’écoute…",bp?`va bien après <b>${esc(bp.t)}</b>`:""].filter(Boolean).join(" · ");
+  const meta=[c?`${Math.round(c.bpm)} BPM · ${esc(c.k)}`:"j’écoute…",bp?`va bien après <b>${esc(bp.t)}</b>`:""].filter(Boolean).join(" · ");
   const flags=[!showPos&&tr?`<span style="color:var(--orange)">tendance n°${tr.pos}</span>`:"",x.peu&&!tr?`<span style="color:var(--violet)">pépite</span>`:"",x.style&&!showPos?esc(x.style):""].filter(Boolean).join(" · ");
-  return `<div class="trow">${showPos?`<div class="rank">${x.pos}<small style="color:${mv==null?"var(--blue)":mv>0?"var(--green)":mv<0?"var(--red)":"var(--muted)"}">${mv==null?"new":mv>0?"▲"+mv:mv<0?"▼"+(-mv):"="}</small></div>`:""}${cover(x)}
+  return `<div class="trow">${showPos?`<div class="rank">${esc(x.pos)}<small style="color:${mv==null?"var(--blue)":mv>0?"var(--green)":mv<0?"var(--red)":"var(--muted)"}">${mv==null?"new":mv>0?"▲"+mv:mv<0?"▼"+(-mv):"="}</small></div>`:""}${cover(x)}
     <div class="tm"><b>${esc(x.t)}</b><div class="hint">${esc(x.a)}${flags?" · "+flags:""}</div><div class="hint">${meta}</div></div>
     <button class="play ${on?"on":""}" onclick="playDz(${x.dz})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>
     ${own?'<span class="tag ok">Tu l’as</span>':wish?`<span class="tag info" data-tip="Dans ta musique, à récupérer">✓ Ajouté</span>`:`<button class="btn sm add" onclick="addIdea(${x.dz})" aria-label="Ajouter à ma musique">${svg("plus",15)}</button>`}</div>`;}
-function addAllBtn(kind,list){const n=list.filter(x=>!libMatch(x)).length;return n?`<button class="btn ghost block mt" onclick="addAll('${kind}')">${svg("plus",15)}Tout ajouter à ma musique (${n})</button>`:"";}
+function addAllBtn(kind,list){const n=list.filter(x=>!libMatch(x)).length;return n?`<button class="btn ghost block mt" onclick="addAll('${jsq(kind)}')">${svg("plus",15)}Tout ajouter à ma musique (${n})</button>`:"";}
 VIEWS.trend=()=>{
   const it=S.trends.items,on=new Set(STYLES.filter(([k])=>S.styles[k]).map(x=>x[1])),dsc=(S.disc.items||[]).filter(x=>on.has(x.style)),tab=S.trTab||"moment";
   const wl=wishes(),ug=upgrades(),listN=wl.length+ug.length;
@@ -1323,7 +1334,7 @@ VIEWS.trend=()=>{
       <div class="card mt" style="padding:4px 14px">${dsc.length?dsc.map(x=>trRow(x,false)).join(""):`<div class="empty">${discBusy?"Je fouille les playlists de tes styles…":`<button class="btn" onclick="loadDiscovery()">Trouver des pépites</button>`}</div>`}</div>
       ${dsc.length?`<div class="row mt" style="gap:8px">${addAllBtn("disc",dsc).replace("btn ghost block mt","btn ghost").replace("<button","<button style=\"flex:1\"")}<button class="btn" style="flex:1" onclick="moreDisc()" ${discBusy?"disabled":""}>${discBusy?"Je cherche…":"Encore des pépites"}</button></div><button class="chip mt" onclick="loadDiscovery()">Tout renouveler</button>`:""}`;}
   if(tab==="liste"){
-    const row=t=>{const on=t.dz&&PL&&PL.u==="t"+t.n;return `<div class="trow">${cover(t)}<div class="tm clk" onclick="startFrom(${t.n})"><b>${esc(t.t)}</b><div class="hint">${esc(t.a)} · ${esc(t.why||"")}</div><div class="hint">${t.bpm?Math.round(t.bpm)+" BPM · "+(t.k||"?"):"j’écoute…"} · <u>préparer avec</u></div></div>
+    const row=t=>{const on=t.dz&&PL&&PL.u==="t"+t.n;return `<div class="trow">${cover(t)}<div class="tm clk" onclick="startFrom(${t.n})"><b>${esc(t.t)}</b><div class="hint">${esc(t.a)} · ${esc(t.why||"")}</div><div class="hint">${t.bpm?Math.round(t.bpm)+" BPM · "+esc(t.k||"?"):"j’écoute…"} · <u>préparer avec</u></div></div>
       <button class="play ${on?"on":""}" onclick="playTrack(${t.n})">${svg(on?"pause":"play",12)}</button><button class="mi" onclick="${t.wish?`rmWish(${t.n})`:`clearUpgrade(${t.n})`}" aria-label="Retirer" data-tip="Retirer">${svg("x",14)}</button></div>`;};
     const grp=(title,desc,items)=>items.length?`<h3 class="mt">${title} <span class="hint" style="font-weight:400">· ${desc}</span></h3><div class="card mt2" style="padding:4px 14px">${items.map(row).join("")}</div>`:"";
     body=`<p class="hint mt">Ces sons sont déjà dans ta musique : tu peux préparer tes sets avec. Il te reste à récupérer les fichiers. ${H.dl&&PERM.dl==="granted"?"Dès qu’un fichier arrive dans Téléchargements, je le relie tout seul.":"Connecte ton dossier Téléchargements (Réglages) : je relierai les fichiers dès qu’ils arrivent."}</p>
@@ -1480,14 +1491,14 @@ const isPlaying=x=>PL&&PL.u==="t"+x.n;
 async function playTrack(n,force=false){const x=T(n);const u="t"+n;if(!force&&PL&&PL.u===u)return stopPlay();if(!force)Q.items=[];stopPlay();PL={u,x,src:"…"};renderPlayer();refreshPlay();
   const f=await fileOf(x);if(PL?.u!==u)return;
   if(f){AU.src=URL.createObjectURL(f);PL.src="ton fichier";}
-  else if(x.dz){try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";}catch(e){previewFail();return stopPlay();}}
-  else{const p=await dzSearch(x);if(PL?.u!==u)return;if(!p){toast("Pas d’extrait disponible. Connecte ton dossier Musique pour écouter tes fichiers.",false,true);return stopPlay();}AU.src=p.preview;PL.src="extrait 30 s · Deezer";if(p.cover)x.cover=x.cover||p.cover;}
+  else if(x.dz){try{const d=await jsonp(`https://api.deezer.com/track/${x.dz}`);if(PL?.u!==u)return;AU.src=dzMedia(d.preview);PL.src="extrait 30 s · Deezer";}catch(e){previewFail();return stopPlay();}}
+  else{const p=await dzSearch(x);if(PL?.u!==u)return;if(!p){toast("Pas d’extrait disponible. Connecte ton dossier Musique pour écouter tes fichiers.",false,true);return stopPlay();}try{AU.src=dzMedia(p.preview);}catch(e){previewFail();return stopPlay();}PL.src="extrait 30 s · Deezer";if(safeUrl(p.cover,"img"))x.cover=x.cover||p.cover;}
   try{await AU.play();}catch(e){toast("Lecture impossible : "+esc(e.message),false,true);return stopPlay();}startProg();renderPlayer();refreshPlay();}
 async function dzSearch(x){const k=x.a+"|"+x.t;if(k in DZC&&(!DZC[k]||Date.now()-DZC[k].t<8*60e3))return DZC[k];try{const art=String(x.a).split(/,|&| feat/i)[0].trim(),tit=String(x.t).replace(/\(.*\)/,"").trim();
   const d=await jsonp("https://api.deezer.com/search?q="+encodeURIComponent(art+" "+tit)+"&limit=5");const a0=norm(art).trim().split(" ")[0];
   const r=(d.data||[]).find(it=>it.preview&&norm(it.artist?.name).includes(a0)&&norm(it.title).includes(norm(tit).trim().split(" ")[0]));DZC[k]=r?{preview:r.preview,cover:r.album?.cover_medium,t:Date.now()}:null;}catch(e){DZC[k]=null;}return DZC[k];}
-async function playDz(dz,force=false,meta=null){const u="dz"+dz;if(!force&&PL&&PL.u===u)return stopPlay();if(!force)Q.items=[];stopPlay();const it=meta||findDz(dz)||{t:"…",a:""};PL={u,x:{dz,t:it.t,a:it.a,cover:it.cover,k:S.trendCache[dz]?.k,bpm:S.trendCache[dz]?.bpm},src:"…"};renderPlayer();refreshPlay();
-  try{const d=await jsonp(`https://api.deezer.com/track/${dz}`);if(PL?.u!==u)return;AU.src=d.preview;PL.src="extrait 30 s · Deezer";await AU.play();startProg();}catch(e){previewFail();return stopPlay();}renderPlayer();refreshPlay();}
+async function playDz(dz,force=false,meta=null){if(!intId(dz))return toast("Son introuvable : identifiant incorrect.",false,true);dz=intId(dz);const u="dz"+dz;if(!force&&PL&&PL.u===u)return stopPlay();if(!force)Q.items=[];stopPlay();const it=meta||findDz(dz)||{t:"…",a:""};PL={u,x:{dz,t:it.t,a:it.a,cover:it.cover,k:S.trendCache[dz]?.k,bpm:S.trendCache[dz]?.bpm},src:"…"};renderPlayer();refreshPlay();
+  try{const d=await jsonp(`https://api.deezer.com/track/${dz}`);if(PL?.u!==u)return;AU.src=dzMedia(d.preview);PL.src="extrait 30 s · Deezer";await AU.play();startProg();}catch(e){previewFail();return stopPlay();}renderPlayer();refreshPlay();}
 function startProg(){clearInterval(progT);progT=setInterval(()=>{const b=$("#pbar");if(b&&AU.duration)b.style.width=(AU.currentTime/AU.duration*100)+"%";},250);}
 function stopPlay(){AU.pause();clearInterval(progT);if(AU.src.startsWith("blob:"))URL.revokeObjectURL(AU.src);PL=null;renderPlayer();refreshPlay();}
 function refreshPlay(){if($(".ov")){if(window.findRefresh)findRefresh();return;}if(S.screen==="lib")libTable();else if(["next","trend","listen"].includes(S.screen))softRender();}
@@ -1526,7 +1537,7 @@ AU.onplay=AU.onpause=()=>{if(AU.ended)return;if(PL)renderPlayer();else mediaSync
 function mediaSync(){if(!("mediaSession" in navigator))return;const ms=navigator.mediaSession;
   if(!PL){try{ms.metadata=null;ms.playbackState="none";}catch(e){}return;}const x=PL.x;
   try{ms.metadata=new MediaMetadata({title:x.t||"",artist:x.a||"",album:Q.label||"SetMate",
-    artwork:x.cover?[{src:x.cover,sizes:"250x250",type:"image/jpeg"}]:[{src:"icon-512.png",sizes:"512x512",type:"image/png"}]});ms.playbackState=AU.paused?"paused":"playing";}catch(e){}}
+    artwork:safeUrl(x.cover,"img")?[{src:safeUrl(x.cover,"img"),sizes:"250x250",type:"image/jpeg"}]:[{src:"icon-512.png",sizes:"512x512",type:"image/png"}]});ms.playbackState=AU.paused?"paused":"playing";}catch(e){}}
 if("mediaSession" in navigator){const h=(a,f)=>{try{navigator.mediaSession.setActionHandler(a,f);}catch(e){}};
   h("play",()=>{if(PL&&AU.src&&!AU.error){AU.play().catch(()=>{});renderPlayer();}else if(Q.items.length)qPlay(Math.max(0,Q.i));});h("pause",()=>{AU.pause();renderPlayer();});h("stop",()=>stopPlay());
   h("nexttrack",()=>qNext());h("previoustrack",()=>qPrev());h("seekto",d=>{if(d.seekTime!=null)AU.currentTime=d.seekTime;});}
@@ -1575,7 +1586,7 @@ async function listenAfter(){const el=$("#stoInfo");if(!el||!navigator.storage||
 /* ---------- Playlists importées ---------- */
 const plGet=id=>(S.pls||[]).find(p=>p.id===id);
 function plFind(dz){for(const p of S.pls||[]){const x=p.items.find(y=>y.dz===dz)||(p.sim||[]).find(y=>y.dz===dz);if(x)return x;}return (S.radio||[]).find(y=>y.dz===dz)||null;}
-const dzItemA=t=>Object.assign(dzItem(t),{aid:t.artist?t.artist.id:null});
+const dzItemA=t=>Object.assign(dzItem(t),{aid:t.artist?intId(t.artist.id):null});
 function splitRow(l,sep){if(sep==="\t")return l.split("\t");const r=[];let cur="",q=false;
   for(let i=0;i<l.length;i++){const c=l[i];if(q){if(c==='"'){if(l[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}else if(c==='"')q=true;else if(c===sep){r.push(cur);cur="";}else cur+=c;}r.push(cur);return r;}
 /** Lit une liste de sons, quel que soit son format : M3U, tableau (export Musique, Exportify, TuneMyMusic), ou une ligne « Artiste - Titre » par son. */
@@ -1650,7 +1661,7 @@ function plRm(id,i){const p=plGet(id);if(!p)return;const [x]=p.items.splice(i,1)
 function plSimAdd(id,dz){const p=plGet(id),x=p&&(p.sim||[]).find(y=>y.dz===dz);if(!x)return;if(p.items.some(y=>y.dz===dz))return toast("Déjà dans la playlist.");
   p.items.push({t:x.t,a:x.a,dz:x.dz,cover:x.cover,pop:x.pop,aid:x.aid});p.sim=p.sim.filter(y=>y.dz!==dz);save();toast(`« ${esc(x.t)} » ajouté à « ${esc(p.name)} ».`);softRender();}
 function plDel(id){const i=S.pls.findIndex(p=>p.id===id);if(i<0)return;const [p]=S.pls.splice(i,1);S.plOpen=null;pushUndo("suppression de la playlist",()=>{S.pls.splice(i,0,p);save();softRender();});save();toast(`Playlist « ${esc(p.name)} » supprimée.`,true);softRender();}
-function plRename(id){const p=plGet(id);if(!p)return;modal(`<h2>Renommer</h2><input class="f mt" id="plNew" value="${esc(p.name)}" style="width:100%"><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="const v=$('#plNew').value.trim();if(v){plGet('${p.id}').name=v;save();}closeModal();softRender()">Garder</button></div>`);}
+function plRename(id){const p=plGet(id);if(!p)return;modal(`<h2>Renommer</h2><input class="f mt" id="plNew" value="${esc(p.name)}" style="width:100%"><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="const v=$('#plNew').value.trim();if(v){plGet('${jsq(p.id)}').name=v;save();}closeModal();softRender()">Garder</button></div>`);}
 /** Exporte la playlist en texte : à recoller dans un autre service (transfert gratuit). */
 function plExport(id,fmt){const p=plGet(id);if(!p)return;const safe=s=>`"${String(s||"").replace(/"/g,'""')}"`;
   const txt=fmt==="csv"?"Track name,Artist name\n"+p.items.map(x=>safe(x.t)+","+safe(x.a)).join("\n"):p.items.map(x=>(x.a?x.a+" - ":"")+x.t).join("\n");
@@ -1690,28 +1701,28 @@ const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform===
 const installed=()=>navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;
 function rowKey(x){const q=plQueueItem(x);return q?qKey(q):"";}
 function plCard(p){const n=p.items.length,f=p.items.filter(x=>x.dz||ownMatch(x)).length,busy=plBusy&&plBusy.id===p.id;
-  return `<div class="trow"><div class="clk" style="display:contents" onclick="S.plOpen='${p.id}';S.plLimit=200;softRender();$('#main').scrollTop=0">${p.cover?cover({cover:p.cover,a:p.name}):`<div class="cv" style="display:grid;place-items:center;background:var(--panel3)">${svg(p.id==="likes"?"heart":"listen",18)}</div>`}
+  return `<div class="trow"><div class="clk" style="display:contents" onclick="S.plOpen='${jsq(p.id)}';S.plLimit=200;softRender();$('#main').scrollTop=0">${p.cover?cover({cover:p.cover,a:p.name}):`<div class="cv" style="display:grid;place-items:center;background:var(--panel3)">${svg(p.id==="likes"?"heart":"listen",18)}</div>`}
     <div class="tm"><b>${esc(p.name)}</b><div class="hint">${pl(n,"son")} · ${esc(PLSRC[p.src]||p.src)}${busy?` · je cherche ${plBusy.done}/${plBusy.total}`:f<n?` · ${f} à écouter`:""}</div></div></div>
-    <button class="play" onclick="plPlay('${p.id}',0)" aria-label="Écouter">${svg("play",12)}</button></div>`;}
+    <button class="play" onclick="plPlay('${jsq(p.id)}',0)" aria-label="Écouter">${svg("play",12)}</button></div>`;}
 function plDetail(p){const busy=plBusy&&plBusy.id===p.id,dzN=p.items.filter(x=>x.dz).length,toAdd=p.items.filter(x=>x.dz&&!libMatch(x)).length,lim=S.plLimit||200;
   const rows=p.items.slice(0,lim).map((x,i)=>{const k=rowKey(x),on=k&&PL&&PL.u===k&&!AU.paused,m=libMatch(x),o=ownMatch(x);
     const st=o?"sur ce téléphone":m&&!m.wish?"dans ta musique":m?"à récupérer":x.miss?"introuvable":!x.dz?"je cherche…":"";
-    return `<div class="trow">${cover(x)}<div class="tm clk" onclick="plPlay('${p.id}',${i})"><b>${esc(x.t)}</b><div class="hint">${esc(x.a)}${st?" · "+st:""}</div></div>
-      ${k?`<button class="play ${on?"on":""}" onclick="plPlay('${p.id}',${i})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>`:""}
-      ${x.dz&&!m?`<button class="btn sm add" onclick="plAdd('${p.id}',${i})" aria-label="Ajouter à ma musique">${svg("plus",15)}</button>`:""}
-      <button class="mi" onclick="plRm('${p.id}',${i})" aria-label="Retirer de la playlist" data-tip="Retirer">${svg("x",14)}</button></div>`;}).join("");
+    return `<div class="trow">${cover(x)}<div class="tm clk" onclick="plPlay('${jsq(p.id)}',${i})"><b>${esc(x.t)}</b><div class="hint">${esc(x.a)}${st?" · "+st:""}</div></div>
+      ${k?`<button class="play ${on?"on":""}" onclick="plPlay('${jsq(p.id)}',${i})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>`:""}
+      ${x.dz&&!m?`<button class="btn sm add" onclick="plAdd('${jsq(p.id)}',${i})" aria-label="Ajouter à ma musique">${svg("plus",15)}</button>`:""}
+      <button class="mi" onclick="plRm('${jsq(p.id)}',${i})" aria-label="Retirer de la playlist" data-tip="Retirer">${svg("x",14)}</button></div>`;}).join("");
   const sim=p.sim||[],sb=plSimBusy.has(p.id);
   return `<button class="chip" onclick="S.plOpen=null;softRender()">‹ Mes playlists</button>
     <div class="row between mt"><div><h1 style="margin:0">${esc(p.name)}</h1><p class="sub" style="margin:4px 0 0">${pl(p.items.length,"son")} · ${esc(PLSRC[p.src]||p.src)}${busy?` · je retrouve les sons : ${plBusy.done}/${plBusy.total}`:""}</p></div></div>
-    <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="plPlay('${p.id}',0)">${svg("play",13)}Écouter</button><button class="btn ghost" onclick="plPlay('${p.id}',0,true)">${svg("shuf",14)}Aléatoire</button>
-      <button class="btn ghost" onclick="plSimilar('${p.id}')" ${sb||!p.items.length?"disabled":""}>${svg("radio",14)}${sb?"Je cherche…":"Sons du même univers"}</button><button class="btn ghost" onclick="sendToApple('${p.id}')">${svg("apple",14)}Vers Apple Music</button>
-      ${toAdd?`<button class="btn ghost" onclick="plAddAll('${p.id}')">${svg("plus",14)}Tout ajouter à ma musique (${toAdd})</button>`:""}</div>
+    <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="plPlay('${jsq(p.id)}',0)">${svg("play",13)}Écouter</button><button class="btn ghost" onclick="plPlay('${jsq(p.id)}',0,true)">${svg("shuf",14)}Aléatoire</button>
+      <button class="btn ghost" onclick="plSimilar('${jsq(p.id)}')" ${sb||!p.items.length?"disabled":""}>${svg("radio",14)}${sb?"Je cherche…":"Sons du même univers"}</button><button class="btn ghost" onclick="sendToApple('${jsq(p.id)}')">${svg("apple",14)}Vers Apple Music</button>
+      ${toAdd?`<button class="btn ghost" onclick="plAddAll('${jsq(p.id)}')">${svg("plus",14)}Tout ajouter à ma musique (${toAdd})</button>`:""}</div>
     ${sim.length?`<h3 class="mt">Pour enrichir cette playlist</h3><p class="hint">Même univers, les moins connus d’abord. <b style="color:var(--txt)">+</b> : dans ta musique. <b style="color:var(--txt)">→</b> : dans cette playlist.</p>
-      <div class="card mt2" style="padding:4px 14px">${sim.map(x=>trRow(x,false).replace(/<\/div>\s*$/,`<button class="mi" onclick="plSimAdd('${p.id}',${x.dz})" aria-label="Ajouter à la playlist" data-tip="Dans cette playlist">→</button></div>`)).join("")}</div>`:""}
+      <div class="card mt2" style="padding:4px 14px">${sim.map(x=>trRow(x,false).replace(/<\/div>\s*$/,`<button class="mi" onclick="plSimAdd('${jsq(p.id)}',${x.dz})" aria-label="Ajouter à la playlist" data-tip="Dans cette playlist">→</button></div>`)).join("")}</div>`:""}
     <div class="card mt" style="padding:4px 14px">${rows||`<div class="empty">Playlist vide. Mets un son en coup de cœur (♥ dans le lecteur) pour la remplir.</div>`}</div>
     ${p.items.length>lim?`<button class="btn ghost block mt" onclick="S.plLimit=${lim+200};softRender()">Afficher plus (${p.items.length-lim} restants)</button>`:""}
-    <div class="row mt" style="gap:8px;flex-wrap:wrap"><span class="hint">Emporter la liste ailleurs :</span><button class="chip" onclick="shareKind('pl:${p.id}')">Partager</button><button class="chip" onclick="plExport('${p.id}','copy')">Copier</button><button class="chip" onclick="plExport('${p.id}','txt')">Fichier .txt</button><button class="chip" onclick="plExport('${p.id}','csv')">Fichier .csv</button>
-      <span class="tsp"></span><button class="chip" onclick="plRename('${p.id}')">Renommer</button><button class="chip" onclick="plDel('${p.id}')">Supprimer</button></div>
+    <div class="row mt" style="gap:8px;flex-wrap:wrap"><span class="hint">Emporter la liste ailleurs :</span><button class="chip" onclick="shareKind('pl:${jsq(p.id)}')">Partager</button><button class="chip" onclick="plExport('${jsq(p.id)}','copy')">Copier</button><button class="chip" onclick="plExport('${jsq(p.id)}','txt')">Fichier .txt</button><button class="chip" onclick="plExport('${jsq(p.id)}','csv')">Fichier .csv</button>
+      <span class="tsp"></span><button class="chip" onclick="plRename('${jsq(p.id)}')">Renommer</button><button class="chip" onclick="plDel('${jsq(p.id)}')">Supprimer</button></div>
     ${dzN<p.items.length&&!busy&&p.items.some(x=>x.miss)?`<p class="hint mt2">Les sons « introuvables » n’ont pas d’équivalent clair sur Deezer : vérifie l’orthographe ou ajoute le fichier sur ce téléphone.</p>`:""}`;}
 function qLabel(it){if(it.n){const t=T(it.n);return t?{t:t.t,a:t.a,cover:t.cover}:it;}if(it.fid){const o=S.own.find(x=>x.fid===it.fid);return o||it;}return it;}
 VIEWS.listen=()=>{const tab=S.lsTab||"pls",p=S.plOpen&&plGet(S.plOpen);
@@ -1723,7 +1734,7 @@ VIEWS.listen=()=>{const tab=S.lsTab||"pls",p=S.plOpen&&plGet(S.plOpen);
     return head+`<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="addOwnFiles()">${svg("plus",15)}Ajouter des fichiers audio</button>${own.length?`<button class="btn ghost" onclick="ownPlay(0)">${svg("play",13)}Tout écouter</button><button class="btn ghost" onclick="ownPlay(0,true)">${svg("shuf",14)}Aléatoire</button>`:""}</div>
       <p class="hint mt2">MP3, M4A, AAC ou WAV, choisis dans l’app Fichiers. Ils restent dans SetMate, sur cet appareil. <span id="stoInfo"></span></p>
       <div class="card mt" style="padding:4px 14px">${own.length?own.map((o,i)=>{const on=PL&&PL.u==="f"+o.fid&&!AU.paused;return `<div class="trow">${cover(o)}<div class="tm clk" onclick="ownPlay(${i})"><b>${esc(o.t)}</b><div class="hint">${esc(o.a||"Artiste inconnu")} · ${Math.max(1,Math.round(o.size/1048576))} Mo</div></div>
-        <button class="play ${on?"on":""}" onclick="${PL&&PL.u==="f"+o.fid&&inQueue()?"qToggle()":`ownPlay(${i})`}" aria-label="Écouter">${svg(on?"pause":"play",12)}</button><button class="mi" onclick="ownRm('${o.fid}')" aria-label="Retirer de ce téléphone" data-tip="Retirer">${svg("x",14)}</button></div>`;}).join(""):`<div class="empty">Aucun fichier pour l’instant. Ajoute tes sons pour les écouter partout, même en avion.</div>`}</div>`;}
+        <button class="play ${on?"on":""}" onclick="${PL&&PL.u==="f"+o.fid&&inQueue()?"qToggle()":`ownPlay(${i})`}" aria-label="Écouter">${svg(on?"pause":"play",12)}</button><button class="mi" onclick="ownRm('${jsq(o.fid)}')" aria-label="Retirer de ce téléphone" data-tip="Retirer">${svg("x",14)}</button></div>`;}).join(""):`<div class="empty">Aucun fichier pour l’instant. Ajoute tes sons pour les écouter partout, même en avion.</div>`}</div>`;}
   if(tab==="q"){return head+(Q.items.length?`<div class="row between mt"><span class="hint">${esc(Q.label||"File d’écoute")}</span><span class="row" style="gap:6px"><button class="chip ${Q.shuffle?"on":""}" onclick="Q.shuffle=!Q.shuffle;softRender()">Aléatoire</button><button class="chip ${Q.repeat!=="off"?"on":""}" onclick="qRepeat();softRender()">Répéter${Q.repeat==="one"?" ce son":Q.repeat==="all"?" tout":""}</button><button class="chip" onclick="Q.items=[];Q.i=-1;stopPlay();softRender()">Vider</button><button class="chip" onclick="saveList('queue')">Enregistrer</button><button class="chip" onclick="shareKind('queue')">Partager</button></span></div>
       <div class="card mt2" style="padding:4px 14px">${Q.items.map((it,i)=>{const l=qLabel(it),cur=i===Q.i;return `<div class="trow">${cover(l)}<div class="tm clk" onclick="qPlay(${i})"><b style="${cur?"color:var(--blue)":""}">${esc(l.t)}</b><div class="hint">${esc(l.a||"")}${cur?" · en cours":""}</div></div></div>`;}).join("")}</div>`
       :`<div class="card mt"><div class="empty">La file est vide. Lance une playlist, tes fichiers ou une radio (bouton radio du lecteur).</div></div>`);}
@@ -1758,7 +1769,7 @@ try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}c
 /* ---------- Enchaînement sans coupure : le son suivant est prêt AVANT la fin du son en cours ---------- */
 const DZP={};let QPRE=null;
 async function dzPreview(dz){const c=DZP[dz];if(c&&Date.now()-c.t<8*60e3)return c.u;const d=await jsonp(`https://api.deezer.com/track/${dz}`);
-  if(!d.preview)throw new Error("pas d’extrait");DZP[dz]={u:d.preview,t:Date.now()};return d.preview;}
+  if(!d.preview)throw new Error("pas d’extrait");const pv=dzMedia(d.preview);DZP[dz]={u:pv,t:Date.now()};return pv;}
 /** Indice du son suivant, sans rien lancer. En aléatoire, le choix est gardé pour que le son préparé soit bien celui qui jouera. */
 function qPeek(auto){const n=Q.items.length;if(!n)return -1;if(auto&&Q.repeat==="one")return Q.i;
   if(Q.shuffle&&n>1){if(Q.nextI!=null&&Q.nextI!==Q.i&&Q.nextI<n&&!Q.played.has(Q.nextI))return Q.nextI;
@@ -1811,7 +1822,7 @@ let SVI=[];
 function saveAsPlaylist(name,list,title="Enregistrer en playlist"){SVI=list.map(songOf).filter(x=>x&&x.t);if(!SVI.length)return toast("Rien à enregistrer.",false,true);
   const mine=(S.pls||[]).slice(0,15);
   modal(`<h2>${esc(title)}</h2><p class="hint mt2">${SVI.length>1?pl(SVI.length,"son"):esc((SVI[0].a?SVI[0].a+" - ":"")+SVI[0].t)}</p>
-   ${mine.length?`<p class="hint mt">Dans une playlist existante :</p><div class="row mt2" style="flex-wrap:wrap;gap:6px">${mine.map(p=>`<button class="chip" onclick="svTo('${p.id}')">${esc(p.name)}</button>`).join("")}</div><p class="hint mt">Ou une nouvelle :</p>`:""}
+   ${mine.length?`<p class="hint mt">Dans une playlist existante :</p><div class="row mt2" style="flex-wrap:wrap;gap:6px">${mine.map(p=>`<button class="chip" onclick="svTo('${jsq(p.id)}')">${esc(p.name)}</button>`).join("")}</div><p class="hint mt">Ou une nouvelle :</p>`:""}
    <input class="f mt2" id="svName" value="${esc(name)}" style="width:100%" autocomplete="off">
    <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="svNew()">Créer la playlist</button></div>`);}
 function addToPlaylist(x){saveAsPlaylist(x&&x.t||"Ma playlist",[x],"Ajouter à une playlist");}
@@ -1826,7 +1837,7 @@ PLSRC.setmate="créée dans SetMate";
 function playSet(){const items=S.set.ids.map(n=>{const t=T(n);return t?{n,t:t.t,a:t.a,cover:t.cover}:null;}).filter(Boolean);qStart(items,0,"Set · "+S.set.name);}
 const setList=()=>S.set.ids.map(n=>T(n)).filter(Boolean);
 /** Boutons à ajouter sous une liste : enregistrer en playlist et partager. */
-function listActions(kind,label){return `<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn ghost sm" onclick="saveList('${kind}')">${svg("plplus",14)}Enregistrer en playlist</button><button class="btn ghost sm" onclick="shareKind('${kind}')">${svg("share",14)}Partager</button></div>`;}
+function listActions(kind,label){return `<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn ghost sm" onclick="saveList('${jsq(kind)}')">${svg("plplus",14)}Enregistrer en playlist</button><button class="btn ghost sm" onclick="shareKind('${jsq(kind)}')">${svg("share",14)}Partager</button></div>`;}
 function listOf(kind){const on=new Set(STYLES.filter(([k])=>S.styles[k]).map(x=>x[1]));
   if(kind==="search")return [`Recherche « ${S.search.q} »`,S.search.items||[]];
   if(kind==="moment")return [`Tendances du ${new Date(S.trends.date||Date.now()).toLocaleDateString("fr-FR")}`,S.trends.items||[]];
@@ -1867,9 +1878,9 @@ function handlePasted(txt){const u=(txt.match(/https?:\/\/\S+/)||[])[0];
     <input class="f mt" id="cfName" value="Playlist du ${new Date().toLocaleDateString("fr-FR")}" style="width:100%" autocomplete="off">
     <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn" onclick="const n=($('#cfName').value||'').trim()||'Ma playlist';closeModal();plFromItems(SVI,n,'texte')">Importer</button></div>`);}
 async function albFromDeezer(id){toast("J’importe l’album…");try{const d=await jsonp(`https://api.deezer.com/album/${id}`);
-  const items=((d.tracks&&d.tracks.data)||[]).map(t=>Object.assign(dzItemA(t),{cover:d.cover_medium}));plCreate(d.title+(d.artist?" · "+d.artist.name:""),"deezer",items,d.cover_medium);}
+  const items=((d.tracks&&d.tracks.data)||[]).map(t=>Object.assign(dzItemA(t),{cover:safeUrl(d.cover_medium,"img")}));plCreate(d.title+(d.artist?" · "+d.artist.name:""),"deezer",items,safeUrl(d.cover_medium,"img"));}
   catch(e){toast("Album introuvable : "+esc(e.message),false,true);}}
-async function trackFromDeezer(id){try{const d=await jsonp(`https://api.deezer.com/track/${id}`);addToPlaylist(Object.assign(dzItemA(d),{cover:d.album&&d.album.cover_medium}));}
+async function trackFromDeezer(id){try{const d=await jsonp(`https://api.deezer.com/track/${id}`);addToPlaylist(Object.assign(dzItemA(d),{cover:safeUrl(d.album&&d.album.cover_medium,"img")}));}
   catch(e){toast("Son introuvable : "+esc(e.message),false,true);}}
 document.addEventListener("paste",e=>{if(S.screen!=="listen"||$(".ov")||/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
   const t=e.clipboardData&&e.clipboardData.getData("text");if(t&&t.trim()){e.preventDefault();handlePasted(t.trim());}});
@@ -1947,29 +1958,54 @@ const BK_SHAPE={
   seratoDbAge:["l’âge de la base Serato","un nombre ou rien",bkOpt(bkNum)],pls:["les playlists","une liste",bkArr],own:["les fichiers du téléphone","une liste",bkArr],lsTab:["l’onglet écoute","du texte",bkStr],
   seenV:["la version vue","du texte",bkStr],am:["les liens Apple Music","un objet",bkObj],recTab:["l’onglet récupérer","du texte",bkStr]};
 function bkParseVer(v){const m=bkStr(v)&&v.match(/^(\d+)\.(\d+)(?:\.(\d+))?(?:[-+][\w.+-]*)?$/);return m?[+m[1],+m[2],+(m[3]||0)]:null;}
-/** Vérifie le contenu (fiches de sons, playlists, soirées...). Les clés qui finissent dans un gestionnaire onclick sont strictement limitées. */
-function bkCheckItems(st,E){
-  const strOrNull=(o,fs)=>fs.find(f=>o[f]!=null&&!bkStr(o[f]));
+const BK_KEY=/^(?:[1-9]|1[0-2])[AB]$/,bkNumish=x=>bkNum(x)||(bkStr(x)&&/^-?\d{1,15}(\.\d{1,6})?$/.test(x));
+/** Fiche de son (bibliothèque, tendances, playlists...) : types vérifiés ; une pochette hors liste blanche est retirée (compteur ctx.covers). */
+function bkSong(o,w,E,ctx){
+  if(!bkObj(o)){E(w+" : ce n’est pas une fiche de son.");return false;}
+  for(const f of ["t","a","path","g","sg","cover","era","src","why","al","genreTag","style","dzT","dzA"])if(o[f]!=null&&!bkStr(o[f])){E(w+" : « "+f+" » doit être du texte.");return false;}
+  for(const f of ["k","kEst"])if(o[f]!=null&&!(bkStr(o[f])&&BK_KEY.test(o[f]))){E(w+" : « "+f+" » n’est pas une tonalité valide (exemple : 8A).");return false;}
+  for(const f of ["bpm","e","year","kbps","conf","pop","pos","rank","added","lastPlayed","size"])if(o[f]!=null&&!bkNumish(o[f])){E(w+" : « "+f+" » doit être un nombre.");return false;}
+  for(const f of ["dz","aid"])if(o[f]!=null&&!bkInt(o[f])){E(w+" : « "+f+" » doit être un nombre entier.");return false;}
+  if(o.fid!=null&&!(bkStr(o.fid)&&BK_ID.test(o.fid))){E(w+" : « fid » est un identifiant de fichier incorrect.");return false;}
+  if(o.cover&&!safeUrl(o.cover,"img")){o.cover=null;ctx.covers++;}
+  return true;}
+/** Vérifie le contenu. Les clés et identifiants qui finissent dans un gestionnaire onclick sont strictement limités. */
+function bkCheckItems(st,E,ctx){
   if(bkArr(st.tracks)){if(st.tracks.length>300000)E("Trop de sons dans la sauvegarde (plus de 300 000).");
     const seen=new Set();let bad=0;
     for(let i=0;i<st.tracks.length&&bad<3;i++){const t=st.tracks[i],w="Son n°"+(i+1);
       if(!bkObj(t)){E(w+" : ce n’est pas une fiche de son.");bad++;continue;}
       if(!bkInt(t.n)||t.n<1){E(w+" : le numéro « n » doit être un nombre entier positif.");bad++;continue;}
       if(seen.has(t.n)){E(w+" : le numéro "+t.n+" apparaît deux fois.");bad++;continue;}seen.add(t.n);
-      const f=strOrNull(t,["t","a","path","g","sg","k","cover","era","src","why"]);if(f){E(w+" : « "+f+" » doit être du texte.");bad++;continue;}
-      if(t.dz!=null&&!bkInt(t.dz)){E(w+" : « dz » doit être un nombre entier.");bad++;continue;}
-      if(t.aid!=null&&!bkInt(t.aid)){E(w+" : « aid » doit être un nombre entier.");bad++;}}}
+      if(!bkSong(t,w+" (n°"+t.n+")",E,ctx))bad++;}}
   const lst=(arr,nom,fn)=>{if(!bkArr(arr))return;let bad=0;for(let i=0;i<arr.length&&bad<3;i++){const m=fn(arr[i],nom+" n°"+(i+1));if(m){E(m);bad++;}}};
+  const songs=(arr,nom)=>lst(arr,nom,(x,w)=>{let m=null;if(!bkSong(x,w,e=>{m=m||e;},ctx))return m;return null;});
+  songs(st.todo,"À récupérer");
+  if(bkObj(st.trends))songs(st.trends.items,"Tendance");
+  if(bkObj(st.disc)){songs(st.disc.items,"Découverte");songs(st.disc.extra,"Découverte (suite)");}
   lst(st.pls,"Playlist",(p,w)=>{if(!bkObj(p))return w+" : ce n’est pas une playlist.";if(!bkStr(p.id)||!BK_ID.test(p.id))return w+" : identifiant incorrect (lettres, chiffres, tiret).";
     if(!bkStr(p.name))return w+" : le nom doit être du texte.";if(!bkArr(p.items))return w+" : la liste des sons est absente.";if(p.cover!=null&&!bkStr(p.cover))return w+" : la pochette doit être du texte.";
-    for(const x of p.items){if(!bkObj(x))return w+" : un son de la liste est incorrect.";if(strOrNull(x,["t","a","cover"]))return w+" : un son a un titre, un artiste ou une pochette qui n’est pas du texte.";
-      if(x.dz!=null&&!bkInt(x.dz))return w+" : un son a un numéro Deezer incorrect.";if(x.aid!=null&&!bkInt(x.aid))return w+" : un son a un numéro d’artiste incorrect.";if(x.fid!=null&&!(bkStr(x.fid)&&BK_ID.test(x.fid)))return w+" : un son a un identifiant de fichier incorrect.";
-      if(x.n!=null&&!bkInt(x.n))return w+" : un son a un numéro incorrect.";}return null;});
-  lst(st.own,"Fichier du téléphone",(o,w)=>{if(!bkObj(o))return w+" : fiche incorrecte.";if(!bkStr(o.fid)||!BK_ID.test(o.fid))return w+" : identifiant de fichier incorrect.";if(strOrNull(o,["t","a","type"]))return w+" : titre, artiste ou type qui n’est pas du texte.";return null;});
-  lst(st.gigs,"Soirée",(g,w)=>{if(!bkObj(g))return w+" : fiche incorrecte.";if(!bkInt(g.id))return w+" : l’identifiant doit être un nombre entier.";if(g.played!=null&&!bkArr(g.played))return w+" : la liste des sons joués est incorrecte.";return null;});
+    if(p.cover&&!safeUrl(p.cover,"img")){p.cover=null;ctx.covers++;}
+    for(const x of p.items){let m=null;if(!bkSong(x,w,e=>{m=m||e;},ctx))return m;if(x.n!=null&&!bkInt(x.n))return w+" : un son a un numéro incorrect.";}return null;});
+  lst(st.own,"Fichier du téléphone",(o,w)=>{if(!bkObj(o))return w+" : fiche incorrecte.";if(!bkStr(o.fid)||!BK_ID.test(o.fid))return w+" : identifiant de fichier incorrect.";if(["t","a","type"].some(f=>o[f]!=null&&!bkStr(o[f])))return w+" : titre, artiste ou type qui n’est pas du texte.";return null;});
+  lst(st.gigs,"Soirée",(g,w)=>{if(!bkObj(g))return w+" : fiche incorrecte.";if(!bkInt(g.id))return w+" : l’identifiant doit être un nombre entier.";
+    if(g.date!=null&&!(bkStr(g.date)&&/^\d{4}-\d{2}-\d{2}$/.test(g.date)))return w+" : la date doit être de la forme AAAA-MM-JJ.";
+    if(["lieu","type","theme","time"].some(f=>g[f]!=null&&!bkStr(g[f])))return w+" : lieu, type, thème ou horaires qui ne sont pas du texte.";
+    if(g.played!=null&&!(bkArr(g.played)&&g.played.every(bkInt)))return w+" : la liste des sons joués est incorrecte.";return null;});
   lst(st.notifs,"Notification",(n,w)=>{if(!bkObj(n))return w+" : fiche incorrecte.";if(n.go!=null&&!(bkStr(n.go)&&/^[a-z][a-z0-9_-]{0,29}$/.test(n.go)))return w+" : le lien d’écran est incorrect.";return null;});
   if(bkObj(st.L)){for(const k of Object.keys(st.L)){if(!/^\d{1,12}$/.test(k)||!bkObj(st.L[k])){E("Les sons appris (« L ») contiennent une clé ou une valeur incorrecte.");break;}}}
   if(bkObj(st.P)){for(const k of Object.keys(st.P)){if(!/^\d{1,12}>\d{1,12}$/.test(k)||!bkObj(st.P[k])){E("Les apprentissages d’enchaînements (« P ») contiennent une clé ou une valeur incorrecte.");break;}}}
+  if(bkObj(st.am)){for(const k of Object.keys(st.am)){const v=st.am[k];if(v===null)continue;
+      const ok=bkObj(v)&&bkInt(v.id)&&v.id>0&&bkInt(v.coll)&&v.coll>0&&(v.t==null||bkStr(v.t))&&(v.a==null||bkStr(v.a))&&(v.url==null||!!safeUrl(v.url,"open"));
+      if(!ok){delete st.am[k];ctx.am++;}}}
+  // Parcours en profondeur : aucun identifiant Deezer ou de fichier ne doit être autre chose qu'un entier / un identifiant sûr, où qu'il soit.
+  let n=0;const pile=[st];
+  while(pile.length){const o=pile.pop();if(++n>6e6){E("La sauvegarde est trop imbriquée ou trop volumineuse.");return;}
+    if(bkArr(o)){for(const v of o)if(v&&typeof v==="object")pile.push(v);continue;}
+    for(const k in o){const v=o[k];
+      if((k==="dz"||k==="aid")&&v!=null&&!bkInt(v)){E("Un numéro Deezer (« "+k+" ») est incorrect dans la sauvegarde.");return;}
+      if(k==="fid"&&v!=null&&!(bkStr(v)&&BK_ID.test(v))){E("Un identifiant de fichier est incorrect dans la sauvegarde.");return;}
+      if(v&&typeof v==="object")pile.push(v);}}
 }
 /** Valide AVANT d'appliquer. Ne touche à rien. Renvoie {ok, errors[], warnings[], state (champs retenus), info}. */
 function validateBackup(text,size){
@@ -1990,8 +2026,11 @@ function validateBackup(text,size){
     if(!ok(st[k])){const got=st[k]===null?"rien":bkArr(st[k])?"une liste":typeof st[k]==="object"?"un objet":typeof st[k]==="string"?"du texte":typeof st[k]==="number"?"un nombre":"autre chose";E("« "+k+" » ("+lab+") devrait être "+att+" mais contient "+got+".");continue;}
     out[k]=st[k];}
   if(!err.length&&!["tracks","set","pls","gigs","own"].some(k=>k in out)){E("Aucune donnée SetMate reconnue dans ce fichier (ni sons, ni set, ni playlists, ni soirées).");}
-  if(!err.length)bkCheckItems(out,E);
+  const ctx={covers:0,am:0};
+  if(!err.length)bkCheckItems(out,E,ctx);
   if(err.length)return fail();
+  if(ctx.covers)warn.push(pl(ctx.covers,"pochette")+" d’une adresse non autorisée "+(ctx.covers>1?"ont été retirées":"a été retirée")+" (le reste est intact).");
+  if(ctx.am)warn.push(pl(ctx.am,"lien")+" Apple Music invalide"+(ctx.am>1?"s":"")+" "+(ctx.am>1?"ont été retirés":"a été retiré")+" du cache (ils seront recherchés à nouveau).");
   if(out.tracks){const mx=out.tracks.reduce((m,t)=>Math.max(m,t.n),0),want=out.nextN||S.nextN||1;if(want<=mx){out.nextN=mx+1;warn.push("Le numéro suivant a été corrigé automatiquement ("+(mx+1)+").");}}
   if(missing.length)warn.push(pl(missing.length,"élément")+" absent"+(missing.length>1?"s":"")+" de cette sauvegarde (par exemple : "+missing.slice(0,3).join(", ")+") : "+(missing.length>1?"ils seront conservés":"il sera conservé")+" tel"+(missing.length>1?"s":"")+" qu’"+(missing.length>1?"ils sont":"il est")+" sur cet appareil.");
   if(v[1]<cur[1])warn.push("Sauvegarde d’une ancienne version ("+d.setmate+") : elle est lue normalement.");
@@ -2040,12 +2079,14 @@ function amScore(x,it){const T0=norm(baseTitle(x.t)).trim(),tt=norm(baseTitle(it
   if(tt===T0)s+=3;else if(tt&&(tt.includes(T0)||T0.includes(tt)))s+=2;else if(T0&&tt.includes(T0.split(" ")[0]))s+=1;
   if(A0){if(aa===A0||aa.includes(A0))s+=3;else if(aa&&(aa.includes(A0.split(" ")[0])||A0.includes(aa)))s+=2;}else s+=1;return s;}
 /** Une recherche toutes les 3,2 s : Apple limite à environ 20 par minute. Le résultat (même « introuvable ») est gardé. */
+/** Fiche Apple sûre : identifiants entiers, adresse https music.apple.com / itunes.apple.com ou rien. null si inutilisable. */
+function amSafe(m){if(!m||typeof m!=="object")return null;const id=intId(m.id),coll=intId(m.coll);if(!id||!coll)return null;return {id,coll,url:safeUrl(m.url,"open"),t:String(m.t==null?"":m.t),a:String(m.a==null?"":m.a)};}
 function amMatch(x){const k=amKey(x);if(!k)return Promise.resolve(null);if(S.am[k]!==undefined)return Promise.resolve(S.am[k]);
   const run=amChain.then(async()=>{if(S.am[k]!==undefined)return S.am[k];const wait=3200-(Date.now()-amLast);if(wait>0)await sleep(wait);amLast=Date.now();
     const q=encodeURIComponent((String(x.a||"").split(/,|&| feat/i)[0]+" "+String(x.t||"").replace(/\(.*?\)|\[.*?\]/g,"")).trim());
     const r=await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=6&country=${AMC}`);if(!r.ok)throw new Error("Apple a répondu "+r.status+" (trop de recherches ? attends une minute)");
     const d=await r.json();let best=null,bs=0;for(const it of d.results||[]){const s=amScore(x,it);if(s>bs){bs=s;best=it;}}
-    const m=best&&bs>=(x.a?4:3)?{id:best.trackId,coll:best.collectionId,url:best.trackViewUrl,t:best.trackName,a:best.artistName}:null;
+    const m=amSafe(best&&bs>=(x.a?4:3)?{id:best.trackId,coll:best.collectionId,url:best.trackViewUrl,t:best.trackName,a:best.artistName}:null);
     S.am[k]=m;if(Object.keys(S.am).length>600){for(const kk of Object.keys(S.am).slice(0,100))delete S.am[kk];}save();return m;});
   amChain=run.catch(()=>{});return run;}
 
@@ -2060,13 +2101,15 @@ function trackMenu(){if(!PL)return;TM=PL.x;
    <button class="btn ghost" onclick="closeModal();shareList(TM.t,[TM])">${svg("share",15)}Partager</button></div>
    <p class="hint mt2">Apple Music s’ouvre avec ton abonnement. SetMate ne lit jamais la musique d’Apple lui-même.</p>`);}
 async function openAM(){if(!TM)return;toast("Je cherche dans Apple Music…");
-  try{const m=await amMatch(TM);if(!m)return toast("Pas trouvé dans Apple Music (orthographe ?).",false,true);closeModal();location.assign(m.url);}
+  try{const m=amSafe(await amMatch(TM));if(!m)return toast("Pas trouvé dans Apple Music (orthographe ?).",false,true);if(!m.url)return toast("Lien Apple Music refusé : adresse non reconnue.",false,true);closeModal();openExternal(m.url);}
   catch(e){toast(esc(e.message),false,true);}}
 async function embedAM(){if(!TM)return;toast("Je cherche dans Apple Music…");
-  try{const m=await amMatch(TM);if(!m)return toast("Pas trouvé dans Apple Music.",false,true);
-    modal(`<h2>${esc(m.t)}</h2><p class="hint">${esc(m.a)}</p><iframe class="mt" style="width:100%;height:175px;border:0;border-radius:12px;background:#1b1b21" allow="autoplay *; encrypted-media *; clipboard-write" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/${AMC}/album/_/${m.coll}?i=${m.id}"></iframe>
+  try{const m=amSafe(await amMatch(TM));if(!m)return toast("Pas trouvé dans Apple Music.",false,true);
+    const emb=safeUrl(`https://embed.music.apple.com/${AMC}/album/_/${m.coll}?i=${m.id}`,"embed");
+    modal(`<h2>${esc(m.t)}</h2><p class="hint">${esc(m.a)}</p>${emb?`<iframe class="mt" style="width:100%;height:175px;border:0;border-radius:12px;background:#1b1b21" allow="autoplay *; encrypted-media *; clipboard-write" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="${esc(emb)}"></iframe>`:""}
       <p class="hint mt2">Appuie sur « Connexion » dans le lecteur : avec ton abonnement Apple Music, le son passe en entier. Sans connexion : extrait de 30 s. <b>À vérifier sur ton iPhone.</b></p>
-      <div class="row mt" style="justify-content:flex-end;gap:8px"><button class="btn ghost" onclick="closeModal()">Fermer</button><button class="btn" onclick="location.assign('${m.url}')">Ouvrir dans Musique</button></div>`);}
+      <div class="row mt" style="justify-content:flex-end;gap:8px"><button class="btn ghost" onclick="closeModal()">Fermer</button>${m.url?`<button class="btn" id="amOpen">Ouvrir dans Musique</button>`:""}</div>`);
+    const ob=$("#amOpen");if(ob)ob.addEventListener("click",()=>openExternal(m.url));}
   catch(e){toast(esc(e.message),false,true);}}
 
 /* ---------- Envoyer une playlist vers Apple Music (raccourci iPhone) ---------- */
@@ -2074,7 +2117,7 @@ const SC_NAME="SetMate Apple Music";
 async function sendToApple(id){const p=plGet(id);if(!p||!p.items.length)return;const txt=p.items.map(x=>(x.a?x.a+" - ":"")+x.t).join("\n");let ok=false;
   try{await navigator.clipboard.writeText(txt);ok=true;}catch(e){}
   modal(`<h2>Envoyer vers Apple Music</h2><p class="hint mt2">« ${esc(p.name)} » · ${pl(p.items.length,"son")}. ${ok?"<b style='color:var(--green)'>La liste est copiée.</b>":"Copie automatique impossible : touche « Copier la liste »."}</p>
-   <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="location.href='shortcuts://run-shortcut?name=${encodeURIComponent(SC_NAME)}&input=clipboard'">Lancer mon raccourci</button><button class="btn ghost" onclick="plExport('${p.id}','copy')">Copier la liste</button></div>
+   <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="location.href='shortcuts://run-shortcut?name=${encodeURIComponent(SC_NAME)}&input=clipboard'">Lancer mon raccourci</button><button class="btn ghost" onclick="plExport('${jsq(p.id)}','copy')">Copier la liste</button></div>
    <p class="hint mt2">Le bouton lance le raccourci « ${SC_NAME} » de ton iPhone avec la liste copiée. Il n’existe pas encore : on le construit ensemble (une seule fois).</p>
    <details class="mt"><summary class="hint clk">Recette du raccourci (non testée)</summary><div class="banner mt2"><b>Non testée.</b> Je l’ai écrite sans pouvoir l’essayer. Les actions de Raccourcis peuvent se comporter autrement. Dis-moi ce qui coince, on corrige.</div>
    <ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Dans <b>Musique</b>, crée une playlist vide nommée <b>SetMate</b> (certains rapports disent que l’action d’ajout ne marche que sur une playlist qui existe déjà).</li><li>Dans <b>Raccourcis</b>, nouveau raccourci nommé <b>${SC_NAME}</b>.</li><li>Actions : <b>Obtenir le presse-papiers</b>, puis <b>Diviser le texte</b> (par nouvelles lignes), puis <b>Répéter avec chaque élément</b>.</li><li>Dans la répétition : <b>Rechercher dans l’iTunes Store</b> (ou <b>Rechercher de la musique</b>) avec l’élément répété, limite 1, puis <b>Ajouter à la playlist SetMate</b>.</li></ol></details>`);}
@@ -2184,7 +2227,7 @@ function recSelDo(act){const ns=[...SELR];if(!ns.length)return toast("Coche d’
 function recRow(t,st){const on=t.dz&&PL&&PL.u==="t"+t.n&&!AU.paused,hasF=!t.wish;
   return `<div class="trow">${SELM?`<input type="checkbox" class="chk" ${SELR.has(t.n)?"checked":""} onchange="recTog(${t.n},this.checked)" aria-label="Sélectionner">`:""}${cover(t)}
     <div class="tm clk" onclick="startFrom(${t.n})"><b>${esc(t.t)}</b><div class="hint">${esc(t.a)}${t.why?" · "+esc(t.why):""}</div>
-    <div class="hint">${t.bpm?Math.round(t.bpm)+" BPM · "+(t.k||"?"):"j’écoute…"} · ${hasF?'<span style="color:var(--green)">Fichier ici</span>':"sans fichier"}</div></div>
+    <div class="hint">${t.bpm?Math.round(t.bpm)+" BPM · "+esc(t.k||"?"):"j’écoute…"} · ${hasF?'<span style="color:var(--green)">Fichier ici</span>':"sans fichier"}</div></div>
     <button class="play ${on?"on":""}" onclick="playTrack(${t.n})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>
     ${st!=="done"?`<button class="btn sm add" onclick="recMark([${t.n}],'done')" aria-label="Marquer comme récupéré" data-tip="Marquer comme récupéré">${svg("check",15)}</button>`:(t.wish?`<button class="mi" onclick="recMark([${t.n}],'todo')" aria-label="Remettre à récupérer" data-tip="Remettre à récupérer">${svg("refresh",14)}</button>`:"")}
     ${t.wish?`<button class="mi" onclick="rmWish(${t.n})" aria-label="Retirer de ma musique" data-tip="Retirer de ma musique">${svg("x",14)}</button>`:""}</div>`;}

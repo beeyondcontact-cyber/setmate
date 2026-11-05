@@ -14,6 +14,11 @@ const sabotages = [
   { nom: "P0-02 : la restauration n'exige plus de sauvegarde valide", projet: "chrome", test: "P0-02 refus avant application : anomalie connue", de: "if(!r.ok){showRestoreError(r.errors);return false;}return restoreState(r);", vers: "return restoreState(r.ok?r:{info:{version:'x',tracks:0,pls:0,gigs:0,own:0,setName:null,setCount:0},warnings:[],state:JSON.parse(txt).state});" },
   { nom: "P0-02 : la copie de secours de l'état précédent n'est plus écrite", projet: "chrome", test: "P0-02 sauvegarde valide réelle", de: 'await DB.set("backup_prev",', vers: 'await DB.set("backup_prev_x",' },
   { nom: "P0-02 : l'état est appliqué en mémoire avant l'écriture vérifiée", projet: "chrome", test: "P0-02 interruption pendant l'écriture", de: 'await DB.setMany([["state",st],["tracks",tracks]]);          // refusé', vers: 'S.tracks=tracks;await DB.setMany([["state",st],["tracks",tracks]]).catch(()=>{});          // refusé' },
+  { nom: "P0-03 : safeUrl accepte de nouveau toute adresse", projet: "chrome", test: "P0-03 safeUrl", de: "function safeUrl(u,kind){try{", vers: "function safeUrl(u,kind){return typeof u===\"string\"?u:null;try{" },
+  { nom: "P0-03 : jsq n'échappe plus les retours à la ligne", projet: "chrome", test: "P0-03 jsq", de: '.replace(/\\n/g,"\\\\n")', vers: "" },
+  { nom: "P0-03 : un identifiant Deezer non numérique atteint de nouveau les onclick", projet: "chrome", test: "P0-03 réponse Deezer piégée", de: "const dzItem=t=>({dz:intId(t.id),", vers: "const dzItem=t=>({dz:t.id," },
+  { nom: "P0-03 : le JSONP accepte de nouveau n'importe quelle adresse", projet: "chrome", test: "P0-03 JSONP", de: 'url=safeUrl(url,"api");if(!url)return rej(new Error("adresse refusée"));', vers: "" },
+  { nom: "P0-03 : l'URL Apple retourne dans un gestionnaire onclick", projet: "chrome", test: "P0-03 embedAM : une URL Apple piégée", de: '${m.url?`<button class="btn" id="amOpen">Ouvrir dans Musique</button>`:""}', vers: "<button class=\"btn\" onclick=\"location.assign('${m.url}')\">Ouvrir dans Musique</button>" },
   { nom: "version : index.html et sw.js divergent", projet: "chrome", test: "charge sans erreur", de: /const VERSION="([^"]+)"/, vers: 'const VERSION="0.0.0-sabotage"' }
 ];
 let tous = true;
