@@ -280,7 +280,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.9.2-p0";
+const VERSION="1.9.3-p0";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -396,7 +396,7 @@ async function load(){
     S.todo=[];save(true);}
   for(const k of ["serato","music","dl"]){H[k]=(await DB.get("h_"+k))||null;if(H[k])PERM[k]=await permOf(H[k],modeOf(k));}
 }
-const modeOf=k=>k==="serato"?"readwrite":"read";
+const modeOf=k=>"read";   // P0-04 : la connexion ne demande aucun dossier en écriture (Serato : lecture seule)
 async function permOf(h,mode){try{return await h.queryPermission({mode});}catch(e){return "none";}}
 async function ensurePerm(k,mode){const h=H[k];if(!h)return false;try{let p=await h.queryPermission({mode});if(p!=="granted")p=await h.requestPermission({mode});PERM[k]=p;return p==="granted";}catch(e){return false;}}
 
@@ -571,7 +571,7 @@ document.addEventListener("mousemove",e=>{const tp=$("#tip");if(flag("tip2")){if
 addEventListener("scroll",()=>{if(flag("tip2"))hideTip();},true);
 document.addEventListener("click",()=>{if(flag("tip2"))hideTip();},true);
 /* Interrupteurs des correctifs (retour arrière sans toucher au code) */
-const FLAG_INFO={reco2:"Suggestions sans répétition (CHG-01)",toast2:"Messages d’ajout compacts (CHG-04)",tip2:"Infobulles stables (CHG-05)",nrjbpm:"Énergie jamais déduite du BPM (CHG-03)",seratover:"Vérifier la version de Serato avant d’écrire (P0-1)"};
+const FLAG_INFO={reco2:"Suggestions sans répétition (CHG-01)",toast2:"Messages d’ajout compacts (CHG-04)",tip2:"Infobulles stables (CHG-05)",nrjbpm:"Énergie jamais déduite du BPM (CHG-03)"};
 function flag(k){return !S.flags||S.flags[k]!==false;}
 function notify(txt,goTo){S.notifs.push({id:Date.now(),txt,go:goTo,seen:false,date:Date.now()});if(S.notifs.length>40)S.notifs.shift();save();renderTop();}
 
@@ -623,7 +623,7 @@ document.addEventListener("click",e=>{if(!e.target.closest(".notif")&&!e.target.
 /* ===================== CONNEXION DES DOSSIERS ===================== */
 async function pickDir(k){
   if(!FSA){toast("Ton navigateur ne permet pas de choisir un dossier. Utilise Chrome ou Edge.",false,true);return false;}
-  const opt={serato:{id:"serato",mode:"readwrite",startIn:"music"},music:{id:"music",mode:"read",startIn:"music"},dl:{id:"dl",mode:"read",startIn:"downloads"}}[k];
+  const opt={serato:{id:"serato",mode:"read",startIn:"music"},music:{id:"music",mode:"read",startIn:"music"},dl:{id:"dl",mode:"read",startIn:"downloads"}}[k];
   let h;try{h=await window.showDirectoryPicker(opt);}catch(e){if(e.name!=="AbortError")toast("Accès refusé : "+esc(e.message),false,true);return false;}
   if(k==="serato"){let ok=false;try{await h.getFileHandle("database V2");ok=true;}catch(e){}
     if(!ok){toast("Ce dossier ne contient pas de base Serato. Choisis le dossier <b>_Serato_</b> dans Musique.",false,true);return false;}}
@@ -786,9 +786,9 @@ function selTrack(n){S.sel=S.sel===n?null:n;libTable();$("#libSide").innerHTML=l
 const GOPTS=[["Afro","Afrobeats"],["Afro","Amapiano"],["Afro","Afro house"],["Afro","Afropop"],["Afro","Dancehall"],["Afro","Shatta"],["Afro","Kompa"],["Afro","Zouk"],["Hip-hop","Rap FR"],["Hip-hop","Rap US"],["Hip-hop","Drill"],["Hip-hop","Trap"],["R&B","R&B"],["Open format","Hits"],["Open format","Classiques"],["Open format","House / Dance"],["Open format","Latino"]];
 function libSide(){
   if(!S.sel){const rs=RULES.map((r,i)=>({i,n:r[0],c:visible().filter(x=>!x.wish).filter(r[1]).length})).filter(r=>r.c>0);const sel=rs.filter(r=>S.crates[r.i]).length;
-    return `<div class="card"><div class="row between"><h3>Crates proposées</h3><span class="hint">${sel} cochée${sel>1?"s":""}</span></div><p class="hint">Rangées dans un dossier « SetMate » de Serato. Tes crates existantes ne sont jamais modifiées.</p>
+    return `<div class="card"><div class="row between"><h3>Crates proposées</h3><span class="hint">${sel} cochée${sel>1?"s":""}</span></div><p class="hint">Exportées en playlists M3U8. SetMate n’écrit rien dans Serato. ${M3U_STATUT}.</p>
       <div class="mt2">${rs.map(r=>`<label class="ck" style="cursor:pointer"><input type="checkbox" ${S.crates[r.i]?"checked":""} onchange="S.crates[${r.i}]=this.checked?1:0;save();$('#libSide').innerHTML=libSide()" style="accent-color:var(--blue);width:16px;height:16px"><span><b>${r.n}</b><br><span class="hint">${pl(r.c,"son")}</span></span></label>`).join("")||'<p class="hint">Aucune règle ne correspond encore.</p>'}</div>
-      <button class="btn block mt" ${sel?"":"disabled"} onclick="writeRuleCrates()">Créer dans Serato (${sel})</button></div>`;}
+      <button class="btn block mt" ${sel?"":"disabled"} onclick="exportRuleM3U()">Exporter en M3U8 (${sel})</button></div>`;}
   const x=T(S.sel);if(!x){S.sel=null;return libSide();}const cc=x.conf>=75?"var(--green)":"var(--orange)";
   if(x.wish)return `<div class="card"><div class="row between"><span class="tag info">À récupérer</span><button class="mi" onclick="selTrack(${x.n})">${svg("x",14)}</button></div>
     <div class="row mt2" style="flex-wrap:nowrap">${cover(x,"xl")}<div style="min-width:0"><div class="big" style="font-size:18px">${esc(x.t)}</div><div class="hint">${esc(x.a)} · ${esc(x.why||"")}</div>
@@ -958,7 +958,8 @@ function setPanel(){const items=S.set.ids.map(T).filter(Boolean);const W=280,H2=
   const gig=S.gigs.find(g=>g.id===S.set.gig);
   return `<div class="card mt"><div class="row between"><div class="row" style="gap:8px"><h3>Set en cours</h3><input class="f" value="${esc(S.set.name)}" onchange="S.set.name=this.value;save()" style="padding:4px 8px;font-size:12px;width:200px">
       <select class="f" style="padding:4px 8px;font-size:12px" onchange="S.set.gig=+this.value||null;save();render()"><option value="">Lier à une soirée…</option>${S.gigs.map(g=>`<option value="${g.id}" ${g.id===S.set.gig?"selected":""}>${fmtDate(g.date)} · ${esc(g.lieu)}</option>`).join("")}</select></div>
-    <div class="row" style="gap:8px"><button class="btn ghost sm" onclick="clearSet()">Vider</button><button class="btn ghost sm" onclick="importSet()">${svg("imp",13)}Importer un set</button><button class="btn ghost sm" onclick="playSet()">${svg("play",13)}Écouter le set</button><button class="btn ghost sm" onclick="saveList('set')">${svg("plplus",13)}Playlist</button><button class="btn ghost sm" onclick="shareSet()">${svg("share",13)}Partager</button><button class="btn ghost sm" onclick="exportM3U()">${svg("dl",13)}Playlist M3U</button><button class="btn sm" onclick="exportSetCrate()">Crate Serato</button><button class="btn orange sm" onclick="exportUsb()">${svg("usb",14)}Copier sur clé USB</button></div></div>
+    <div class="row" style="gap:8px"><button class="btn ghost sm" onclick="clearSet()">Vider</button><button class="btn ghost sm" onclick="importSet()">${svg("imp",13)}Importer un set</button><button class="btn ghost sm" onclick="playSet()">${svg("play",13)}Écouter le set</button><button class="btn ghost sm" onclick="saveList('set')">${svg("plplus",13)}Playlist</button><button class="btn ghost sm" onclick="shareSet()">${svg("share",13)}Partager</button><button class="btn sm" onclick="exportM3U()">${svg("dl",13)}Exporter M3U8</button><button class="btn orange sm" onclick="exportUsb()">${svg("usb",14)}Copier sur clé USB</button></div></div>
+    <p class="hint mt2" id="m3uStatut">Export M3U8 pour Serato : <b>${M3U_STATUT}</b>. SetMate n’écrit rien dans ton dossier Serato.</p>
     <div class="row mt2" style="gap:18px"><span class="hint"><b style="color:var(--txt)">${items.length}</b> sons · ≈ <b style="color:var(--txt)">${Math.round(items.length*3.4)} min</b>${items.some(x=>x.bpm)?` · BPM ${Math.round(Math.min(...items.filter(x=>x.bpm).map(x=>x.bpm)))} à ${Math.round(Math.max(...items.filter(x=>x.bpm).map(x=>x.bpm)))}`:""}${gig?` · pour ${esc(gig.lieu)} (${fmtDate(gig.date)})`:""}</span></div>
     ${items.some(x=>x.wish)?`<p class="mt2 clk" style="color:var(--orange);font-size:13px" onclick="S.trTab='liste';go('trend')">${pl(items.filter(x=>x.wish).length,"son")} du set à récupérer avant la soirée →</p>`:""}
     ${items.length>1&&items.some(x=>x.e)?`<svg viewBox="0 0 ${W} ${H2}" style="width:100%;max-width:340px;height:${H2}px"><polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--orange)" stroke-width="2"/>${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="var(--orange)" stroke="var(--panel)" stroke-width="2" data-tip="${i+1}. ${esc(items[i].t)} · énergie ${items[i].e||"?"}"/>`).join("")}</svg>`:""}
@@ -981,62 +982,87 @@ function clearSet(){const o=snapSet();S.set.ids=[S.cur];pushUndo("vidage du set"
 /** Sons du set qui ont un fichier (les « à récupérer » sont mis de côté, avec un message). */
 function setFiles(){const all=S.set.ids.map(T).filter(Boolean),ok=all.filter(t=>!t.wish),miss=all.length-ok.length;
   if(miss)toast(`${pl(miss,"son")} du set ${miss>1?"sont":"est"} encore à récupérer : je ${miss>1?"les":"le"} laisse de côté.`,false,true);return ok;}
-function exportM3U(){const items=setFiles();if(!items.length)return;const txt="#EXTM3U\n"+items.map(x=>`#EXTINF:-1,${x.a} - ${x.t}\n/${x.path}`).join("\n")+"\n";
-  download(new Blob([txt],{type:"audio/x-mpegurl"}),safeName(S.set.name)+".m3u8");exportM3Uwarn();}
 function download(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);}
 const safeName=s=>String(s||"Sans nom").replace(/[\/\\:*?"<>|%]/g,"-").replace(/\s+/g," ").trim().slice(0,80)||"Sans nom";
 
-/* ===================== ÉCRITURE DANS SERATO (sûre) ===================== */
-async function writableSerato(){if(S.demo){return null;}
-  if(!H.serato||!FSA)return null;if(!(await ensurePerm("serato","readwrite"))){toast("Accès en écriture refusé au dossier Serato.",false,true);return null;}return H.serato;}
-function confirmClosed(title,body){return new Promise(res=>{modal(`<h2>${title}</h2><p class="hint mt2">${body}</p>
-  <label class="ck mt" style="cursor:pointer"><input type="checkbox" id="clsd" style="accent-color:var(--green);width:18px;height:18px" onchange="$('#goW').disabled=!this.checked"><span><b>Serato est fermé</b><br><span class="hint">S’il reste ouvert, il peut effacer ce que j’écris.</span></span></label>
-  <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" id="noW">Annuler</button><button class="btn" id="goW" disabled>Écrire</button></div>`);
-  $("#noW").onclick=()=>{closeModal();res(false)};$("#goW").onclick=()=>{res(true)};});}
+/* ===================== SERATO : ÉCRITURES DIRECTES DÉSACTIVÉES (P0-04) =====================
+   Décision de Sabri (05/11/2026) : aucune écriture binaire directe dans les bibliothèques Serato (database V2, crates,
+   fichiers originaux) tant que leur sûreté n’est pas démontrée. Ce n’est PAS un réglage : constante non modifiable, aucune
+   option d’interface ne la change, et les fonctions d’écriture refusent elles-mêmes (dernier verrou). Voie prioritaire : export M3U8.
+   La lecture (loadSerato, History Export) reste permise. Les fichiers audio sont seulement COPIÉS (jamais modifiés). */
+const SERATO_ECRITURE_AUTORISEE=false;
+const M3U_STATUT="Compatibilité réelle non testée";
+function seratoRefus(quoi){throw new Error("Écriture directe dans Serato désactivée (P0-04) : "+quoi+". Utilise l’export M3U8.");}
+const estDossierSerato=n=>/^_?serato_?$/i.test(String(n||"").trim());
+async function writableSerato(){return null;}
+async function writeFile(){seratoRefus("writeFile");}
+async function writeCrates(){seratoRefus("writeCrates");}
 function stepsUI(title,steps){modal(`<h2>${title}</h2><div class="mt">${steps.map((s,i)=>`<div class="step" id="st${i}"><div class="st"></div><span>${esc(s)}</span></div>`).join("")}</div><div id="stEnd"></div>`);
   return {run:i=>{const e=$("#st"+i);if(e)e.className="step run";},ok:(i,txt)=>{const e=$("#st"+i);if(e){e.className="step done";e.querySelector(".st").textContent="✓";if(txt)e.querySelector("span").textContent=txt;}},
     err:(i,txt)=>{const e=$("#st"+i);if(e){e.className="step err";e.querySelector(".st").textContent="!";e.querySelector("span").textContent=txt;}},end:h=>{$("#stEnd").innerHTML=h;}};}
 async function exists(dir,name){try{await dir.getFileHandle(name);return true;}catch(e){return false;}}
-async function writeFile(dir,name,bytes){const fh=await dir.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(bytes);await w.close();}
 async function readFile(dir,name){return new Uint8Array(await (await (await dir.getFileHandle(name)).getFile()).arrayBuffer());}
-async function backupFile(root,dir,name){const bk=await root.getDirectoryHandle("SetMate sauvegardes",{create:true});const stamp=new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
-  await writeFile(bk,stamp+" "+name,await readFile(dir,name));return stamp+" "+name;}
-/** Écrit des crates "SetMate%%<nom>.crate" dans <root>/Subcrates. Ne touche jamais une crate qui n’a pas été créée par SetMate. */
-async function writeCrates(root,list,volumeTag){
-  const sub=await root.getDirectoryHandle("Subcrates",{create:true});const res=[];
-  if(!(await exists(sub,"SetMate.crate")))await writeFile(sub,"SetMate.crate",buildCrate([]));
-  for(const {name,paths} of list){let file=`SetMate%%${safeName(name)}.crate`;let backup=null;
-    const mine=S.created.find(c=>c.file===file&&c.vol===volumeTag);
-    if(await exists(sub,file)){if(mine)backup=await backupFile(root,sub,file);else{let i=2;while(await exists(sub,`SetMate%%${safeName(name)} (${i}).crate`))i++;file=`SetMate%%${safeName(name)} (${i}).crate`;}}
-    await writeFile(sub,file,buildCrate(paths));
-    const back=crateTracks(await readFile(sub,file));if(back.length!==paths.length)throw new Error(`vérification échouée pour ${file}`);
-    if(!mine)S.created.push({file,vol:volumeTag,name,date:Date.now(),count:paths.length});else{mine.date=Date.now();mine.count=paths.length;}
-    res.push({file,count:paths.length,backup});}
-  save();return {sub,res};
-}
-async function removeCreated(sub,files,vol){for(const f of files){try{await sub.removeEntry(f);}catch(e){}S.created=S.created.filter(c=>!(c.file===f&&c.vol===vol));}save();}
-/* ---------- P0-1 : la version de Serato décide de ce qu’on peut écrire ----------
-   Serato 3 lit `_Serato_/Subcrates`. Serato 4 et 5 ont une nouvelle bibliothèque et ignorent ces crates
-   (manuel Lexicon) ; aucune voie d’import officielle en 4. On n’écrit donc rien et on n’annonce aucun succès hors Serato 3. */
+/* ---------- P0-1 / P0-04 : la version de Serato ne décide plus d’une écriture : il n’y en a plus ----------
+   Serato 3 lisait `_Serato_/Subcrates`. Serato 4 et 5 ont une nouvelle bibliothèque. SetMate n’écrit plus rien dans Serato, quelle que soit la version. */
 const SV_LABEL={"3":"Serato DJ Pro 3","4":"Serato DJ Pro 4","5":"Serato DJ 5.0","?":"Version inconnue"};
 function askSeratoVersion(){return new Promise(res=>{
-  modal(`<h2>Quelle version de Serato utilises-tu ?</h2><p class="hint mt2">Dans Serato : menu <b>Aide › À propos</b> (sur Mac : <b>Serato DJ Pro › À propos</b>). C’est important : Serato 4 a changé de bibliothèque et ne lit plus les crates écrites par d’autres logiciels.</p>
-   ${S.seratoDbAge>30?`<p class="mt2" style="color:var(--orange);font-size:13px">Indice : ta base Serato 3 n’a pas changé depuis ${S.seratoDbAge} jours. Tu es peut-être passé à Serato 4.</p>`:""}
+  modal(`<h2>Quelle version de Serato utilises-tu ?</h2><p class="hint mt2">Dans Serato : menu <b>Aide › À propos</b> (sur Mac : <b>Serato DJ Pro › À propos</b>). Cette information sert seulement aux explications : SetMate n’écrit rien dans Serato.</p>
    <div class="grid g2 mt" style="gap:8px">${["3","4","5","?"].map(v=>`<button class="btn ${v==="3"?"":"ghost"}" data-v="${v}">${v==="?"?"Je ne sais pas":SV_LABEL[v]}</button>`).join("")}</div>`);
   document.querySelectorAll(".modal [data-v]").forEach(b=>b.onclick=()=>{S.seratoVer=b.dataset.v;save();closeModal();if(S.screen==="settings"||S.screen==="lib")render();res(S.seratoVer);});});}
-async function seratoGate(){if(!flag("seratover"))return true;if(!S.seratoVer)await askSeratoVersion();return S.seratoVer==="3";}
-function seratoAlternatives(kind){const v=S.seratoVer||"?";
-  modal(`<h2>${SV_LABEL[v]} : pas de crate automatique</h2>
-   <p class="hint mt2">${v==="?"?"Sans connaître ta version, je n’écris rien dans Serato : en Serato 4 et plus, les crates écrites par d’autres logiciels n’apparaissent pas.":"Serato 4 et plus rangent les crates dans une nouvelle bibliothèque qu’aucun autre logiciel ne peut remplir de façon officielle. Je n’écris donc rien dans Serato."}</p>
-   <h3 class="mt">Ce qui marche</h3>
-   ${kind==="set"?`<div class="conn"><div style="flex:1;min-width:0"><b>Un dossier à glisser dans Serato</b><div class="hint">Je copie les sons du set dans un dossier. Dans Serato, ouvre l’onglet <b>Files</b> (pas besoin du Finder), va dans ce dossier et glisse-le sur la zone <b>Crates</b> : il devient une crate. Les fichiers sont numérotés dans l’ordre du set (01, 02…) ; l’ordre obtenu dans Serato est à vérifier chez toi. Les fichiers sont copiés, pas déplacés.</div></div><button class="btn sm" onclick="closeModal();exportFolder()">Choisir</button></div>`:""}
-   <div class="conn"><div style="flex:1;min-width:0"><b>Playlist M3U8</b><div class="hint">${v==="5"?"Serato DJ Pro 5.0 sait importer des fichiers .M3U (notes de version officielles). La méthode exacte reste à vérifier chez toi. Le fichier contient les chemins de CET ordinateur : utilise-le sur celui qui a les fichiers.":"Pour VirtualDJ et Traktor. En Serato 4, l’import M3U est signalé absent (non officiel)."}</div></div><button class="btn sm ghost" onclick="closeModal();${kind==="set"?"exportM3U()":"exportRuleM3U()"}">Télécharger</button></div>
-   <div class="row mt" style="justify-content:space-between"><button class="btn ghost sm" onclick="closeModal();askSeratoVersion()">Changer de version</button><button class="btn" onclick="closeModal()">Fermer</button></div>`);}
-function exportRuleM3U(){const list=RULES.map((r,i)=>S.crates[i]?{name:r[0],items:visible().filter(x=>!x.wish).filter(r[1])}:null).filter(Boolean);
-  list.forEach(c=>download(new Blob(["#EXTM3U\n"+c.items.map(x=>`#EXTINF:-1,${x.a} - ${x.t}\n/${x.path}`).join("\n")+"\n"],{type:"audio/x-mpegurl"}),`SetMate - ${safeName(c.name)}.m3u8`));
-  toast(`${pl(list.length,"playlist")} téléchargée${list.length>1?"s":""}`);}
+/** Porte unique : refuse TOUJOURS. Ne lit ni les Réglages ni la version : un réglage altéré ou restauré ne peut pas la rendre permissive. */
+async function seratoGate(){return SERATO_ECRITURE_AUTORISEE===true;}
+/* ---------- Export M3U8 (voie prioritaire vers Serato) ----------
+   Format : UTF-8 sans BOM, fins de ligne \n, première ligne #EXTM3U, puis pour chaque piste #EXTINF:-1,Artiste - Titre et le chemin.
+   Ordre des pistes conservé. Une piste sans vrai fichier local (à récupérer, signalée manquante, chemin illisible) n’est JAMAIS écrite
+   avec un chemin inventé : elle est omise du fichier et signalée à l’écran. Serato 5.0 annonce l’import des .M3U (notes officielles) ;
+   méthode, encodage et chemins ne sont pas documentés : statut affiché à côté de chaque export = « Compatibilité réelle non testée ». */
+function m3uPath(p){
+  if(typeof p!=="string")return null;const s=p.trim();
+  if(!s||/[\u0000-\u001f\u007f\u2028\u2029]/.test(p))return null;     // saut de ligne ou caractère de contrôle (même en fin de texte) : jamais écrit
+  if(/^(\\\\|\/\/)/.test(s))return null;                               // chemin réseau (UNC) : non géré
+  const d=s.match(/^([A-Za-z]):[\\\/](.*)$/);
+  if(d){const rest=d[2].split(/[\\\/]+/).filter(Boolean);return rest.length?d[1].toUpperCase()+":\\"+rest.join("\\"):null;}   // lettre de lecteur : style Windows
+  if(/^[A-Za-z]:/.test(s))return null;                                 // « D:fichier » (relatif au lecteur) : ambigu
+  const parts=s.split(/[\\\/]+/).filter(Boolean);return parts.length?"/"+parts.join("/"):null;   // chemin Serato sans lecteur : « /Users/… »
+}
+const m3uTxt=x=>String(x==null?"":x).replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g," ").replace(/\s+/g," ").trim();
+/** Construit le texte d’une playlist M3U8. Pure : ne lit ni S ni le disque. Renvoie {text, written, skipped:[{track,reason}], long}. */
+function buildM3U8(items){const lines=["#EXTM3U"],written=[],skipped=[],long=[];
+  for(const x of items){
+    if(!x)continue;
+    let why=null,path=null;
+    if(x.wish)why="à récupérer : pas de fichier sur cet ordinateur";
+    else if(x.missing)why="Serato signale le fichier introuvable";
+    else{path=m3uPath(x.path);if(!path)why="pas de chemin de fichier utilisable";}
+    if(why){skipped.push({track:x,reason:why});continue;}
+    const a=m3uTxt(x.a),t=m3uTxt(x.t)||m3uTxt(String(x.path).split(/[\\\/]/).pop());
+    lines.push("#EXTINF:-1,"+(a?a+" - "+t:t),path);written.push(x);
+    if(path.length>240)long.push(x);}
+  return {text:lines.join("\n")+"\n",written,skipped,long};}
+const m3uBlob=txt=>new Blob([txt],{type:"audio/x-mpegurl;charset=utf-8"});
+function m3uReport(r,titre){const ok=r.written.length;
+  const sk=r.skipped.length?`<h3 class="mt">${pl(r.skipped.length,"son")} sans fichier local, non écrit${r.skipped.length>1?"s":""} dans le fichier</h3><div class="mt2" style="max-height:200px;overflow:auto">${r.skipped.map(k=>`<div class="mini"><div style="flex:1"><b>${esc(k.track.t)}</b> <span class="hint">· ${esc(k.track.a||"")}</span><div class="hint">${esc(k.reason)}</div></div></div>`).join("")}</div>`:"";
+  const lg=r.long.length?`<p class="hint mt2" style="color:var(--orange)">${pl(r.long.length,"chemin")} de plus de 240 caractères : Windows peut les refuser.</p>`:"";
+  modal(`<h2>${esc(titre)}</h2><p class="hint mt2">${pl(ok,"son")} écrit${ok>1?"s":""} dans le fichier M3U8, dans l’ordre. Les chemins sont ceux de CET ordinateur.</p>${sk}${lg}
+   <p class="hint mt2"><b>${M3U_STATUT}.</b> Un fichier M3U8 bien formé ne prouve pas que Serato l’importe : aucun import réel dans Serato n’a encore été vérifié. SetMate n’écrit rien dans ton dossier Serato.</p>
+   <div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">OK</button></div>`);}
+const M3U_DEMO="Mode démo : les sons sont des exemples, leurs fichiers n’existent pas. Aucune playlist M3U8 n’est écrite avec des chemins inventés.";
+function exportM3U(){
+  if(S.demo){toast(M3U_DEMO,false,true);return;}
+  const all=S.set.ids.map(T).filter(Boolean);if(!all.length)return;
+  const r=buildM3U8(all);
+  if(!r.written.length){m3uReport(r,"Aucun son avec un fichier local");return;}
+  download(m3uBlob(r.text),safeName(S.set.name)+".m3u8");exportM3Uwarn(r);}
+function exportRuleM3U(){
+  if(S.demo){toast(M3U_DEMO,false,true);return;}
+  const list=RULES.map((r,i)=>S.crates[i]?{name:r[0],items:visible().filter(r[1])}:null).filter(Boolean);
+  if(!list.length){toast("Coche au moins une playlist proposée.",false,true);return;}
+  const all={written:[],skipped:[],long:[]};
+  list.forEach(c=>{const r=buildM3U8(c.items);if(r.written.length)download(m3uBlob(r.text),`SetMate - ${safeName(c.name)}.m3u8`);all.written.push(...r.written);all.skipped.push(...r.skipped);all.long.push(...r.long);});
+  m3uReport(all,pl(list.length,"playlist")+" M3U8");}
 /** Copie des fichiers du set dans un dossier (un fichier manquant ne bloque pas le reste). */
 async function copyFiles(dest,items,onStep,numbered){const copied=[],lost=[];let skipped=0;
+  if(estDossierSerato(dest.name))seratoRefus("copie dans un dossier Serato");
   for(let i=0;i<items.length;i++){const x=items[i];const f=await fileOf(x);if(!f){lost.push(x.t);continue;}
     const nm=numbered?String(i+1).padStart(2,"0")+" - "+f.name:f.name;let same=false;try{const ex=await (await dest.getFileHandle(nm)).getFile();same=ex.size===f.size;}catch(e){}
     if(!same){const fh=await dest.getFileHandle(nm,{create:true});const w=await fh.createWritable();await w.write(f);await w.close();}else skipped++;
@@ -1045,7 +1071,7 @@ async function copyFiles(dest,items,onStep,numbered){const copied=[],lost=[];let
 async function exportFolder(){const items=setFiles();if(!items.length)return;
   if(!FSA){toast("La copie dans un dossier demande Chrome ou Edge.",false,true);return;}
   if(!H.music||!(await ensurePerm("music","read"))||!S.musicPrefix){toast("Connecte d’abord ton dossier Musique (Réglages) pour que je puisse copier les fichiers.",false,true);go("settings");return;}
-  let root;try{root=await window.showDirectoryPicker({id:"setfolder",mode:"readwrite",startIn:"music"});}catch(e){return;}
+  let root;try{root=await window.showDirectoryPicker({id:"setfolder",mode:"readwrite",startIn:"music"});}catch(e){return;}  if(estDossierSerato(root.name)){toast("Ce dossier est un dossier Serato : SetMate n’y écrit rien. Choisis un autre dossier.",false,true);return;}
   const ui=stepsUI("Dossier du set",["Copie des fichiers","Vérification"]);
   try{ui.run(0);const dest=await root.getDirectoryHandle(safeName(S.set.name),{create:true});
     const r=await copyFiles(dest,items,(i,x)=>{const s=$("#st0 span");if(s)s.textContent=`Copie ${i+1}/${items.length} · ${x.t}`;},true);
@@ -1054,73 +1080,29 @@ async function exportFolder(){const items=setFiles();if(!items.length)return;
     let n=0;for await(const [k] of dest.entries())n++;ui.ok(1,`Relu : ${pl(n,"fichier")} dans le dossier`);
     ui.end(`<p class="hint mt">Dans Serato, glisse le dossier <b>${esc(safeName(S.set.name))}</b> dans la zone des crates. Vérifie l’ordre des sons, Serato ne le garde pas forcément.</p><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">OK</button></div>`);}
   catch(e){ui.end(`<p class="mt" style="color:var(--red)">Erreur : ${esc(e.message)}</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Fermer</button></div>`);}}
-async function writeRuleCrates(){
-  const list=RULES.map((r,i)=>S.crates[i]?{name:r[0],paths:visible().filter(x=>!x.wish).filter(r[1]).map(x=>x.path)}:null).filter(Boolean);
-  if(!S.demo&&!(await seratoGate()))return seratoAlternatives("crates");
-  const root=await writableSerato();if(!root){list.forEach(c=>download(new Blob([buildCrate(c.paths)]),`SetMate%%${safeName(c.name)}.crate`));if(!S.demo)toast("Crates téléchargées. Mets-les dans Musique › _Serato_ › Subcrates, Serato fermé.");return;}
-  if(!(await confirmClosed("Créer les crates dans Serato",`${pl(list.length,"crate")} dans un dossier « SetMate ». Tes crates existantes ne sont pas modifiées.`)))return;
-  const ui=stepsUI("Création des crates",["Préparation du dossier Subcrates",...list.map(c=>`« ${c.name} » · ${pl(c.paths.length,"son")}`),"Vérification"]);
-  try{ui.run(0);await sleep(150);ui.ok(0);const out=[];for(let i=0;i<list.length;i++){ui.run(i+1);const r=await writeCrates(root,[list[i]],"main");out.push(...r.res);ui.ok(i+1);}
-    ui.run(list.length+1);ui.ok(list.length+1,"Relu et vérifié");
-    const files=out.filter(r=>!r.backup).map(r=>r.file);const sub=await root.getDirectoryHandle("Subcrates");
-    pushUndo("création des crates",()=>removeCreated(sub,files,"main"));
-    ui.end(`<p class="hint mt">Ouvre Serato 3 : les crates sont dans <b>SetMate</b>.</p><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Super</button></div>`);
-    notify(`${pl(list.length,"crate")} créées dans Serato`,"lib");}
-  catch(e){ui.end(`<p class="mt" style="color:var(--red)">Erreur : ${esc(e.message)}. Rien d’autre n’a été modifié.</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Fermer</button></div>`);}
-}
-async function exportSetCrate(){const items=setFiles();const name=S.set.name;if(!items.length)return;
-  if(!S.demo&&!(await seratoGate()))return seratoAlternatives("set");
-  const root=await writableSerato();if(!root){crateImpossible();return;}
-  if(!(await confirmClosed("Envoyer le set dans Serato",`Crate « ${esc(name)} » avec ${pl(items.length,"son")}, dans l’ordre.`)))return;
-  const ui=stepsUI("Export vers Serato",[`Crate « ${name} »`,"Vérification"]);
-  try{ui.run(0);const r=await writeCrates(root,[{name,paths:items.map(x=>x.path)}],"main");ui.ok(0);ui.run(1);ui.ok(1,"Relu et vérifié"+(r.res[0].backup?" · ancienne version sauvegardée":""));
-    if(!r.res[0].backup)pushUndo("export du set",()=>removeCreated(r.sub,[r.res[0].file],"main"));
-    ui.end(`<p class="hint mt">Dans Serato 3 : <b>SetMate › ${esc(r.res[0].file.replace(/^SetMate%%|\.crate$/g,""))}</b>.</p><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Parfait</button></div>`);}
-  catch(e){ui.end(`<p class="mt" style="color:var(--red)">Erreur : ${esc(e.message)}</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Fermer</button></div>`);}}
+function writeRuleCrates(){return exportRuleM3U();}   // ancien nom conservé : il exporte maintenant des playlists M3U8, il n’écrit plus dans Serato
+async function exportSetCrate(){const items=setFiles();if(!items.length)return;
+  await seratoGate();   // toujours refusé (P0-04) : aucune écriture dans Serato, on explique et on propose le M3U8
+  crateImpossible();}
 async function exportUsb(){
   const items=setFiles();if(!items.length)return;
   if(S.demo){toast("Mode démo : la copie sur clé demande ta vraie bibliothèque.",false,true);return;}
   if(!FSA){toast("La copie sur clé demande Chrome ou Edge.",false,true);return;}
   if(!H.music||!(await ensurePerm("music","read"))||!S.musicPrefix){toast("Connecte d’abord ton dossier Musique (Réglages) pour que je puisse copier les fichiers.",false,true);go("settings");return;}
-  const s3=await seratoGate();
   modal(`<h2>Copier le set sur une clé USB</h2><p class="hint mt2">Dans la fenêtre qui s’ouvre, choisis <b>la clé elle-même</b> (dans la barre latérale du Finder), pas un dossier à l’intérieur.</p>
-   <div class="card mt" style="background:var(--panel2);padding:12px;font-size:13px">${s3?`Je copie ${pl(items.length,"fichier")} dans <code>SetMate/</code> sur la clé, j’ajoute le crate « ${esc(S.set.name)} » dans le Serato 3 de la clé, et je sauvegarde l’ancienne base de la clé avant de la modifier.`
-     :`Je copie ${pl(items.length,"fichier")} dans le dossier <code>SetMate/${esc(safeName(S.set.name))}/</code> sur la clé. Je ne touche pas à Serato : en ${esc(SV_LABEL[S.seratoVer||"?"])}, glisse ce dossier dans la zone des crates.`}</div>
-   <p class="hint mt2">Platines CDJ : elles ne lisent pas ce format comme une playlist. Pour elles, la clé doit être préparée par rekordbox.${s3?" Premier essai : utilise une clé de test, puis vérifie dans Serato.":""}</p>
+   <div class="card mt" style="background:var(--panel2);padding:12px;font-size:13px">Je copie ${pl(items.length,"fichier")} dans le dossier <code>SetMate/${esc(safeName(S.set.name))}/</code> sur la clé. Je ne touche pas à Serato ni à son dossier <code>_Serato_</code> : dans Serato, glisse ce dossier dans la zone des crates (l’ordre obtenu est à vérifier chez toi).</div>
+   <p class="hint mt2">Platines CDJ : elles ne lisent pas ce format comme une playlist. Pour elles, la clé doit être préparée par rekordbox.</p>
    <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn orange" id="usbGo">Choisir la clé</button></div>`);
   $("#usbGo").onclick=async()=>{let usb;try{usb=await window.showDirectoryPicker({id:"usb",mode:"readwrite"});}catch(e){return;}
-    if(!s3){const ui=stepsUI("Copie sur "+usb.name,["Copie des fichiers","Vérification"]);
-      try{ui.run(0);const dest=await (await usb.getDirectoryHandle("SetMate",{create:true})).getDirectoryHandle(safeName(S.set.name),{create:true});
-        const r=await copyFiles(dest,items,(i,x)=>{const s=$("#st0 span");if(s)s.textContent=`Copie des fichiers ${i+1}/${items.length} · ${x.t}`;});
-        if(!r.copied.length)throw new Error("aucun fichier du set n’a été trouvé sur ton disque");
-        ui.ok(0,`${pl(r.copied.length,"fichier")} sur la clé${r.skipped?` (${r.skipped} déjà présents)`:""}${r.lost.length?` · ${r.lost.length} introuvable${r.lost.length>1?"s":""} : ${r.lost.slice(0,3).join(", ")}`:""}`);
-        let n=0;for await(const [k] of dest.entries())n++;ui.ok(1,`Relu : ${pl(n,"fichier")} dans SetMate/${safeName(S.set.name)}`);
-        const g=S.gigs.find(x=>x.id===S.set.gig);if(g){g.check=g.check||{};g.check.usb=true;}save();
-        ui.end(`<p class="hint mt">Branche la clé sur ton ordinateur avec Serato, puis glisse le dossier <b>SetMate/${esc(safeName(S.set.name))}</b> dans la zone des crates.</p><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Terminé</button></div>`);}
-      catch(e){ui.end(`<p class="mt" style="color:var(--red)">Erreur : ${esc(e.message)}</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Fermer</button></div>`);}
-      return;}
-    const ui=stepsUI("Copie sur "+usb.name,["Copie des fichiers","Base Serato de la clé","Crate du set","Vérification"]);
-    try{ui.run(0);const dest=await usb.getDirectoryHandle("SetMate",{create:true});const copied=[];let skipped=0;
-      const lost=[];
-      for(let i=0;i<items.length;i++){const x=items[i];const f=await fileOf(x);if(!f){lost.push(x.t);continue;}   // un fichier manquant ne bloque pas le reste
-        let same=false;try{const ex=await (await dest.getFileHandle(f.name)).getFile();same=ex.size===f.size;}catch(e){}
-        if(!same){const fh=await dest.getFileHandle(f.name,{create:true});const w=await fh.createWritable();await w.write(f);await w.close();}else skipped++;
-        copied.push({x,rel:"SetMate/"+f.name});const s=$("#st0 span");if(s)s.textContent=`Copie des fichiers ${i+1}/${items.length} · ${x.t}`;}
-      if(!copied.length)throw new Error("aucun fichier du set n’a été trouvé sur ton disque");
-      ui.ok(0,`${pl(copied.length,"fichier")} sur la clé${skipped?` (${skipped} déjà présents)`:""}${lost.length?` · ${lost.length} introuvable${lost.length>1?"s":""} : ${lost.slice(0,3).join(", ")}`:""}`);
-      ui.run(1);const sd=await usb.getDirectoryHandle("_Serato_",{create:true});let recs=[["vrsn","2.0/Serato Scratch LIVE Database"]];let bk=null;
-      if(await exists(sd,"database V2")){bk=await backupFile(sd,sd,"database V2");recs=serParse(await readFile(sd,"database V2"));}
-      const have=new Set(recs.filter(r=>r[0]==="otrk").map(r=>fld(r[1],"pfil")));
-      let main=new Map();try{if(H.serato&&PERM.serato==="granted"){for(const r of serParse(await readFile(H.serato,"database V2")))if(r[0]==="otrk")main.set(fld(r[1],"pfil"),r[1]);}}catch(e){}
-      for(const {x,rel} of copied){if(have.has(rel))continue;const src=main.get(x.path);
-        const fields=src?src.map(([t,v])=>t==="pfil"?[t,rel]:t==="bply"?[t,false]:[t,v]):[["ttyp",rel.split(".").pop()],["pfil",rel],["tsng",x.t],["tart",x.a],["tbpm",x.bpm?x.bpm.toFixed(2):""],["tkey",x.k||""]];
-        recs.push(["otrk",fields]);}
-      await writeFile(sd,"database V2",serEnc(recs));ui.ok(1,`Base Serato de la clé mise à jour${bk?" (ancienne sauvegardée)":""}`);
-      ui.run(2);const r=await writeCrates(sd,[{name:S.set.name,paths:copied.map(c=>c.rel)}],"usb:"+usb.name);ui.ok(2,`Crate « ${S.set.name} » sur la clé`);
-      ui.run(3);const back=serParse(await readFile(sd,"database V2")).filter(r=>r[0]==="otrk").length;ui.ok(3,`Relu : ${pl(back,"son")} dans la base de la clé`);
+    if(estDossierSerato(usb.name)){toast("Ce dossier est un dossier Serato : SetMate n’y écrit rien. Choisis la clé elle-même.",false,true);return;}
+    const ui=stepsUI("Copie sur "+usb.name,["Copie des fichiers","Vérification"]);
+    try{ui.run(0);const dest=await (await usb.getDirectoryHandle("SetMate",{create:true})).getDirectoryHandle(safeName(S.set.name),{create:true});
+      const r=await copyFiles(dest,items,(i,x)=>{const s=$("#st0 span");if(s)s.textContent=`Copie des fichiers ${i+1}/${items.length} · ${x.t}`;});
+      if(!r.copied.length)throw new Error("aucun fichier du set n’a été trouvé sur ton disque");
+      ui.ok(0,`${pl(r.copied.length,"fichier")} sur la clé${r.skipped?` (${r.skipped} déjà présents)`:""}${r.lost.length?` · ${r.lost.length} introuvable${r.lost.length>1?"s":""} : ${r.lost.slice(0,3).join(", ")}`:""}`);
+      let n=0;for await(const [k] of dest.entries())n++;ui.ok(1,`Relu : ${pl(n,"fichier")} dans SetMate/${safeName(S.set.name)}`);
       const g=S.gigs.find(x=>x.id===S.set.gig);if(g){g.check=g.check||{};g.check.usb=true;}save();
-      ui.end(`<p class="hint mt">Branche la clé sur un ordinateur avec Serato 3 : le set est dans <b>SetMate</b>. Les platines CDJ ont besoin d’une clé préparée par rekordbox.</p><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Terminé</button></div>`);
-      notify(`Set copié sur la clé ${usb.name}`,"next");}
+      ui.end(`<p class="hint mt">Branche la clé sur ton ordinateur avec Serato, puis glisse le dossier <b>SetMate/${esc(safeName(S.set.name))}</b> dans la zone des crates.</p><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Terminé</button></div>`);}
     catch(e){ui.end(`<p class="mt" style="color:var(--red)">Erreur : ${esc(e.message)}</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Fermer</button></div>`);}};
 }
 
@@ -1361,7 +1343,7 @@ async function showArrival(){const a=arrivals.shift();if(!a)return;const {f,tg,w
   modal(`<span class="tag info">Nouveau fichier dans Téléchargements</span><h2 class="mt2">${esc(tg.t||f.name)}</h2><p class="hint">${esc(tg.a||"Artiste inconnu")} · ${(f.size/1e6).toFixed(1)} Mo</p>
    ${want?`<div class="card mt" style="background:rgba(61,220,132,.07);border-color:#1f5a3a;padding:12px"><b style="color:var(--green)">C’est « ${esc(want.t)} »</b><p class="hint mt2">${want.wish?"Il était dans ta musique, à récupérer. Je le relie à ce fichier : il garde tout ce que je sais de lui.":"C’est la meilleure version que tu attendais."}</p></div>`:""}
    <div class="card mt" style="background:var(--panel2);padding:12px" id="arrA"><span class="hint">J’analyse le BPM, la tonalité et l’énergie…</span></div>
-   <p class="hint mt">${S.demo?"Mode démo : rien n’est écrit dans Serato.":"Je le range aussi dans la crate <b>SetMate › Nouveautés</b> de Serato."} Le fichier n’est pas déplacé.</p>
+   <p class="hint mt">Rien n’est écrit dans Serato. Le fichier n’est pas déplacé.</p>
    <div class="row mt" style="justify-content:flex-end"><button class="btn ghost" id="arrNo">Ignorer</button><button class="btn" id="arrYes" disabled>${want&&want.wish?"Relier":"Ajouter"}</button></div>`);
   let r=null;try{r=await analyzeFile(f);}catch(e){}
   const bpm=tg.bpm||r?.bpm||(want&&want.bpm),k=toCamelot(tg.key)||r?.key||(want&&want.k),c=classify(tg.genre,tg.a);
@@ -1376,9 +1358,6 @@ async function showArrival(){const a=arrivals.shift();if(!a)return;const {f,tg,w
       S.tracks.push(t);undo=()=>{S.tracks=S.tracks.filter(x=>x!==t);if(want)want.upgrade=true;};}
     reindex();findDups();pushUndo(want&&want.wish?"liaison du fichier":"ajout du nouveau son",()=>{undo();reindex();});save(true);
     closeModal();toast(want&&want.wish?`« ${esc(t.t)} » est relié à son fichier.`:`« ${esc(t.t)} » ajouté. ${t.g==="?"?"Choisis son genre dans Ma musique.":""}`,true);
-    if(!S.demo&&H.serato&&PERM.serato==="granted"&&(!flag("seratover")||S.seratoVer==="3")){const all=S.tracks.filter(x=>!x.inSerato&&!x.wish&&!x.hidden).map(x=>x.path);
-      if(await confirmClosed("Ajouter dans Serato","Je mets les nouveaux sons dans la crate « SetMate › Nouveautés ». Serato les ajoutera à ta bibliothèque à l’ouverture.")){
-        try{const ui=stepsUI("Crate Nouveautés",["Écriture","Vérification"]);ui.run(0);await writeCrates(H.serato,[{name:"Nouveautés",paths:all}],"main");ui.ok(0);ui.ok(1,"Relu et vérifié");ui.end(`<div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">OK</button></div>`);}catch(e){toast("Écriture impossible : "+esc(e.message),false,true);closeModal();}}}
     render();setTimeout(()=>{if(!$(".ov"))showArrival();},200);};}
 /* ===================== DÉBRIEF VOCAL ===================== */
 let REC=null,recOn=false,recT=null,recS=0,finalTxt="";
@@ -1451,21 +1430,21 @@ VIEWS.settings=()=>{const st=k=>H[k]?(PERM[k]==="granted"?'<span class="tag ok">
   const conn=(k,ic,col,title,desc,btn)=>`<div class="conn"><div class="ic" style="background:${col}22;color:${col}">${svg(ic,18)}</div><div style="flex:1;min-width:0"><b>${title}</b> ${st(k)}<div class="hint">${desc}${H[k]?` · dossier « ${esc(H[k].name)} »`:""}</div></div><button class="btn sm ${H[k]?"ghost":""}" onclick="pickDir('${k}')" ${FSA?"":"disabled"}>${H[k]?"Changer":btn}</button></div>`;
   return `<h1>Réglages</h1><p class="sub">Tout reste sur ton ordinateur. Seules les recherches de tendances passent par internet (Deezer).</p>
   <div class="grid g2"><div class="card"><h3>Tes dossiers</h3>
-    ${conn("serato","lib","#2fa4ff","Serato","Musique › _Serato_ · lire ta bibliothèque, écrire les crates","Connecter")}
+    ${conn("serato","lib","#2fa4ff","Serato","Musique › _Serato_ · lecture seule : SetMate n’y écrit rien","Connecter")}
     ${conn("music","folder","#3ddc84","Musique","Le dossier qui contient tes sons · écoute, analyse, copie sur clé","Connecter")}
     ${conn("dl","dl","#ff8a1f","Téléchargements","Repérer les nouveaux sons récupérés","Connecter")}
     ${H.serato&&PERM.serato==="granted"?`<button class="btn ghost sm mt" onclick="loadSerato(true).then(render)">${svg("refresh",13)}Relire ma base Serato</button>`:""}
     ${S.musicPrefix?`<p class="hint mt2">Sons retrouvés sous <code>/${esc(S.musicPrefix)}</code></p>`:""}
     ${H.serato?`<div class="row mt2"><span class="hint">Ta version de Serato</span><select class="f" onchange="S.seratoVer=this.value||null;save();render()"><option value="">À préciser</option>${["3","4","5","?"].map(v=>`<option value="${v}" ${S.seratoVer===v?"selected":""}>${v==="?"?"Je ne sais pas":SV_LABEL[v]}</option>`).join("")}</select></div>
-    <p class="hint mt2">${S.seratoVer==="3"?"Crates SetMate et clé USB au format Serato 3.":S.seratoVer?"Serato 4 et plus : je n’écris aucune crate. Je te propose un dossier à glisser dans Serato, ou une playlist M3U8.":"Indique ta version avant d’envoyer des crates."}${S.seratoDbAge>30?` <span style="color:var(--orange)">Ta base Serato 3 n’a pas changé depuis ${S.seratoDbAge} jours.</span>`:""}</p>`:""}
+    <p class="hint mt2">Je n’écris rien dans Serato, quelle que soit la version. Je te propose une playlist M3U8 (${M3U_STATUT}) ou un dossier à glisser dans Serato.${S.seratoDbAge>30?` <span style="color:var(--orange)">Ta base Serato 3 n’a pas changé depuis ${S.seratoDbAge} jours.</span>`:""}</p>`:""}
     ${!FSA?`<p class="hint mt">Pour connecter des dossiers, ouvre SetMate dans Chrome ou Edge. <button class="btn sm ghost" onclick="importDbFile()">Importer « database V2 »</button></p>`:""}</div>
   <div class="card"><h3>Veille des tendances</h3><p class="hint mt2">Récap automatique chaque jeudi (à l’ouverture de SetMate).</p>
     <div class="row mt2">${[["rap","Rap / Hip-hop"],["afro","Afro"],["amapiano","Amapiano"],["rnb","R&B"],["pop","Pop"]].map(([k,l])=>`<button class="chip ${S.genres[k]?"on":""}" onclick="S.genres.${k}=S.genres.${k}?0:1;save();render()">${l}</button>`).join("")}</div>
     <p class="hint mt2">Le Top France est toujours inclus.</p></div>
   <div class="card"><h3>Sécurité</h3>
     <div class="mini"><div style="flex:1"><b>Il propose, tu valides</b><div class="hint">Aucun fichier audio modifié, déplacé ou supprimé.</div></div><span class="tag ok">Toujours</span></div>
-    <div class="mini"><div style="flex:1"><b>Crates SetMate séparées</b><div class="hint">${pl(S.created.length,"crate")} créée${S.created.length>1?"s":""} par SetMate. Tes crates à toi ne sont jamais modifiées.</div></div></div>
-    <div class="mini"><div style="flex:1"><b>Sauvegardes</b><div class="hint">Avant de remplacer un fichier, copie dans « SetMate sauvegardes ».</div></div></div>
+    <div class="mini"><div style="flex:1"><b>Aucune écriture dans Serato</b><div class="hint">La base et les crates de Serato ne sont jamais écrites par SetMate (désactivé, sans réglage pour le réactiver). Ta bibliothèque est seulement lue.</div></div></div>
+    <div class="mini"><div style="flex:1"><b>Sauvegardes</b><div class="hint">Sauvegarde tes données SetMate avec le bouton ci-dessous. Pour ta bibliothèque Serato, utilise la sauvegarde officielle de Serato.</div></div></div>
     <div class="row mt"><button class="btn ghost sm" onclick="exportData()">${svg("dl",13)}Sauvegarder mes données SetMate</button><button class="btn ghost sm" onclick="importData()">Restaurer</button></div></div>
   <div class="card"><h3>Toi</h3><div class="row mt2"><span class="hint" style="width:70px">Prénom</span><input class="f" value="${esc(S.name)}" placeholder="Ton prénom" onchange="S.name=this.value.trim();save()"></div>
     <p class="hint mt">Raccourcis : Ctrl ou Cmd + K pour chercher · Ctrl ou Cmd + Z pour annuler · Espace pour écouter.</p>
@@ -2379,25 +2358,24 @@ async function impGo(){if(!IMP)return;const dzOn=$("#impDz")&&$("#impDz").checke
   toast(`Set « ${esc(name)} » : ${pl(ids.length,"son")}${added.length?`, dont ${added.length} à récupérer`:""}${lost?`, ${lost} introuvable${lost>1?"s":""} laissé${lost>1?"s":""} de côté`:""}.`,true);}
 
 /* ---------- Plus jamais de fichier d'export impossible à utiliser ---------- */
-function whyNoWrite(){if(S.demo)return "Tu es en mode démo : les sons sont des exemples, leurs fichiers n’existent pas.";if(!FSA)return "Ce navigateur ne peut pas écrire dans tes dossiers"+(/Safari/.test(navigator.userAgent)&&!/Chrome|Edg/.test(navigator.userAgent)?" (c’est le cas de Safari).":".");
-  if(!H.serato)return "Ton dossier Serato n’est pas connecté (Réglages).";return "L’accès à ton dossier Serato n’est pas autorisé.";}
+function whyNoWrite(){return S.demo?"Tu es en mode démo : les sons sont des exemples, leurs fichiers n’existent pas.":"";}
 function crateImpossible(){const raisons=whyNoWrite();
-  modal(`<h2>Pas de crate possible d’ici</h2><p class="hint mt2">${raisons}</p>
-   <p class="hint mt2">Un fichier .crate contient les chemins des fichiers de CET ordinateur, et Serato n’a pas de bouton « Importer une crate ». Je ne te donne donc pas un fichier qui ne marcherait pas.</p>
+  modal(`<h2>Pas de crate possible d’ici</h2><p class="hint mt2">SetMate n’écrit plus dans ton dossier Serato (<code>_Serato_</code>, base et crates) : sa sûreté n’est pas démontrée. ${raisons}</p>
    <h3 class="mt">Ce qui marche</h3>
-   <div class="conn"><div style="flex:1;min-width:0"><b>Sur l’ordinateur qui a Serato</b><div class="hint">Ouvre SetMate dans <b>Chrome ou Edge</b>, connecte ton dossier Serato (Réglages), puis « Importer un set » : SetMate retrouve tes fichiers et écrit la crate lui-même.</div></div></div>
-   <div class="conn"><div style="flex:1;min-width:0"><b>Envoyer le set à un autre DJ</b><div class="hint">Une liste ou un fichier sans chemins : il le retrouve dans sa musique.</div></div><button class="btn sm" onclick="closeModal();shareSet()">Partager</button></div>
-   ${S.demo?"":`<details class="mt"><summary class="hint clk">Avancé : le fichier .crate quand même</summary><p class="hint mt2">Il ne marche que si les fichiers sont aux mêmes endroits. À copier, Serato fermé, dans <code>Musique/_Serato_/Subcrates</code>, puis relance Serato (Serato 3 seulement).</p><button class="btn ghost sm" onclick="closeModal();downloadCrateAdvanced()">Télécharger le .crate</button></details>`}
+   <div class="conn"><div style="flex:1;min-width:0"><b>Playlist M3U8 (voie recommandée)</b><div class="hint">Un fichier texte avec les chemins de CET ordinateur. Serato DJ 5.0 annonce l’import des .M3U (notes officielles), mais la méthode exacte n’est pas documentée. <b>${M3U_STATUT}.</b></div></div><button class="btn sm" onclick="closeModal();exportM3U()">Télécharger</button></div>
+   <div class="conn"><div style="flex:1;min-width:0"><b>Un dossier à glisser dans Serato</b><div class="hint">Je copie les sons du set dans un dossier numéroté (01, 02…). Dans Serato, onglet <b>Files</b>, glisse-le sur la zone <b>Crates</b>. Les fichiers sont copiés, pas déplacés. L’ordre obtenu est à vérifier chez toi.</div></div><button class="btn sm ghost" onclick="closeModal();exportFolder()">Choisir</button></div>
+   <div class="conn"><div style="flex:1;min-width:0"><b>Envoyer le set à un autre DJ</b><div class="hint">Une liste ou un fichier sans chemins : il le retrouve dans sa musique.</div></div><button class="btn sm ghost" onclick="closeModal();shareSet()">Partager</button></div>
    <div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Fermer</button></div>`);}
-function downloadCrateAdvanced(){const items=setFiles();if(!items.length)return;download(new Blob([buildCrate(items.map(x=>x.path))]),`SetMate%%${safeName(S.set.name)}.crate`);toast("Fichier téléchargé : chemins de cet ordinateur uniquement.",false,true);}
-function exportM3Uwarn(){toast(S.seratoVer==="5"?"Playlist téléchargée. Serato DJ 5.0 peut importer les .M3U (notes officielles). Elle contient les chemins de cet ordinateur : à utiliser là où sont les fichiers.":"Playlist téléchargée : elle contient les chemins de cet ordinateur. Serato 4 n’importe plus les M3U (signalé par des utilisateurs) : non testé ici.",false,false);}
+function exportM3Uwarn(r){const n=r?r.written.length:0;
+  if(r&&r.skipped.length||r&&r.long.length){m3uReport(r,"Playlist M3U8 téléchargée");return;}
+  toast(`Playlist M3U8 téléchargée (${pl(n,"son")}). ${M3U_STATUT} : aucun import dans Serato n’a été vérifié. Les chemins sont ceux de cet ordinateur.`,false,false);}
 
 /* ---------- Contrôle de compatibilité (Diagnostic) ---------- */
 function compatRows(add){const ua=navigator.userAgent,safari=/Safari/.test(ua)&&!/Chrome|Chromium|Edg|OPR/.test(ua);
-  add(isIOS?"ok":FSA?"ok":"warn","Écrire dans Serato et sur clé USB",isIOS?"Normal sur iPhone : l’envoi vers Serato se fait depuis l’ordinateur (Chrome ou Edge).":FSA?"Possible dans ce navigateur.":"Impossible dans ce navigateur"+(safari?" (Safari) : ouvre SetMate dans Chrome ou Edge.":" : utilise Chrome ou Edge."));
-  if(!isIOS){add(H.serato?(PERM.serato==="granted"?"ok":"warn"):"warn","Dossier Serato connecté",H.serato?(PERM.serato==="granted"?"Oui.":"Connecté mais à ré-autoriser (Réglages).") :"Non : sans lui, aucune crate ne peut être écrite.");
+  add(isIOS?"ok":FSA?"ok":"warn","Copier des fichiers sur une clé USB (SetMate n’écrit jamais dans Serato)",isIOS?"Normal sur iPhone : la copie se fait depuis l’ordinateur (Chrome ou Edge).":FSA?"Possible dans ce navigateur.":"Impossible dans ce navigateur"+(safari?" (Safari) : ouvre SetMate dans Chrome ou Edge.":" : utilise Chrome ou Edge."));
+  if(!isIOS){add(H.serato?(PERM.serato==="granted"?"ok":"warn"):"warn","Dossier Serato connecté",H.serato?(PERM.serato==="granted"?"Oui.":"Connecté mais à ré-autoriser (Réglages).") :"Non : sans lui, SetMate ne peut pas lire ta base Serato.");
     add(H.music&&PERM.music==="granted"?"ok":"warn","Dossier Musique connecté",H.music&&PERM.music==="granted"?"Oui.":"Non : nécessaire pour copier les fichiers du set.");}
-  add(S.seratoVer?(S.seratoVer==="3"?"ok":"warn"):"warn","Version de Serato",S.seratoVer?(SV_LABEL[S.seratoVer]+(S.seratoVer==="3"?" : crates possibles.":" : pas de crate automatique, voir les alternatives.")):"Pas encore choisie : SetMate te la demande avant d’écrire.");}
+  add(S.seratoVer?"ok":"warn","Version de Serato",S.seratoVer?(SV_LABEL[S.seratoVer]+" : indication seulement, SetMate n’écrit pas dans Serato."):"Pas indiquée (sans importance : SetMate n’écrit pas dans Serato).");}
 
 /* ---------- Signaler un problème (alimente le registre d'erreurs) ---------- */
 function reportProblem(){modal(`<h2>Signaler un problème</h2><p class="hint mt2">Dis-moi ce qui s’est passé. SetMate joint les infos techniques (version, appareil, navigateur, dossiers connectés, dernières erreurs). Rien ne part sans que tu l’envoies.</p>
