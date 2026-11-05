@@ -88,3 +88,11 @@ px playwright test --workers=2, mémoire libre environ 4,3 Go) a donné **194 r�
 - **Statut** : cause non établie. Hypothèse, non vérifiée : délais dépassés sous forte charge mémoire (le même PC avait fait arrêter un test par le système peu avant). Les noms exacts des 4 échecs n'ont pas été conservés.
 - **Risque** : sur la CI GitHub (machine différente), des échecs intermittents sont possibles. Statut : À TESTER (première exécution du workflow chez GitHub pas encore faite).
 - **Prochaine action** : conserver la liste des échecs de toute exécution rouge (reporter list ou rapport HTML) avant d'envisager un correctif. Ne pas augmenter les délais ni retirer un test sans l'accord de Sabri.
+
+## Mise à jour AN-90 (05/11/2026, après le premier run de la CI GitHub)
+- **Constat CI** : le run 41989871954 (premier de l'historique du workflow) a donné **5 échecs** sur `p0_restauration.spec.js` (53 réussis), tous sur la même assertion : l'état enregistré « avant » et « après » un refus de restauration diffèrent.
+- **Cause établie par comparaison des deux états (longueur 1012 contre 1215, première différence à la position 272)** : une notification `Nouveautés prêtes : 0 sons que tu n'as pas` (identifiant = l'heure) est ajoutée par l'appli elle-même. Origine dans le code : le rafraîchissement des tendances Deezer du démarrage (`trBusy`, `S.trends`, `save()`, `notify()`). Il n'a aucun rapport avec la restauration.
+- **Ce n'était donc pas une corruption** : le test prenait sa photo « avant » pendant que cette tâche de fond n'avait pas fini. Instable selon la vitesse de la machine (probablement les 4 échecs locaux du même jour).
+- **Correctif (accord de Sabri : « rendre le test stable, aussi strict »)** : `tests/aide.js` attend maintenant la fin du rafraîchissement des tendances puis la stabilité de l'état enregistré avant toute photo. Aucune assertion n'est assouplie ; l'état doit rester identique à l'octet.
+- **Preuve locale** : restauration x3 : 174 réussis ; suite complète : 198 réussis, 0 échoué. **À confirmer par la CI** (statut IMPLÉMENTÉ NON VALIDÉ jusqu'au prochain run vert).
+- **Reste ouvert** : le refus de restauration n'est pas testé pendant que cette tâche de fond tourne ; l'effet de la tâche de fond sur l'état restauré n'est pas étudié.
