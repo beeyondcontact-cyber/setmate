@@ -1,29 +1,101 @@
 name: Tests SetMate
 
-# Lance les tests (Chrome et moteur de Safari) à chaque envoi de code et à chaque proposition de fusion.
-# Dépôt public : minutes gratuites. Si le dépôt devient privé : 2 000 minutes gratuites par mois.
+# Vérifie chaque envoi de code et chaque proposition de fusion. Ce workflow NE PUBLIE RIEN et ne déploie RIEN :
+# il lit le dépôt, lance les contrôles et les tests, et c'est tout. Aucun secret n'est utilisé.
+# Règles contrôlées par tests/verif_ci.js (lui-même lancé ci-dessous) : permissions minimales, actions figées sur un SHA,
+# délais d'expiration, pas de continue-on-error, tous les fichiers de test lancés.
+# Dépôt public : minutes gratuites. Si le dépôt devient privé : 2 000 minutes gratuites par mois (plan non vérifié).
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  tests:
+  controles-statiques:
+    name: Contrôles sans navigateur (syntaxe, doublons, déploiement, workflow)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Versions figées sur le SHA du commit de l'étiquette (vérifié avec gh api le 05/11/2026), actions officielles « actions/ » seulement.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
-      - run: npx playwright test
-      - name: Contrôle de sabotage (chaque bug connu doit faire échouer son test)
-        run: node tests/sabotage.js
-      - uses: actions/upload-artifact@v4
+      - name: Installer les dépendances de test (versions du fichier verrou)
+        run: npm ci
+      - name: Syntaxe du script et doublons de fonctions (verif_statique)
+        run: node tests/verif_statique.js
+      - name: Intégrité des fichiers de déploiement (version = cache, manifeste, icônes, précache)
+        run: node tests/verif_deploiement.js
+      - name: Garde-fous du workflow (permissions, SHA, secrets, fichiers de test lancés)
+        run: node tests/verif_ci.js
+
+  tests-navigateur:
+    name: Tests Playwright (Chrome et moteur de Safari)
+    needs: controles-statiques
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Installer les dépendances de test (versions du fichier verrou)
+        run: npm ci
+      - name: Installer les navigateurs de test
+        run: npx playwright install --with-deps chromium webkit
+      - name: Persistance (écritures vérifiées)
+        run: npx playwright test tests/p0_persistance.spec.js --workers=2
+      - name: Restauration (valider avant d'appliquer)
+        run: npx playwright test tests/p0_restauration.spec.js --workers=2
+      - name: Injection (adresses, identifiants, gabarits)
+        run: npx playwright test tests/p0_injection.spec.js --workers=2
+      - name: Export Serato M3U8, protection de _Serato_ et mécanisme du contrôle de sabotage
+        run: npx playwright test tests/p0_serato.spec.js tests/sabotage_mecanisme.spec.js tests/ci_garde_fous.spec.js --workers=2
+      - name: Non-régression (erreurs du registre et critères d'acceptation)
+        run: npx playwright test tests/setmate.spec.js --workers=2
+      - name: Aucun test n'a modifié les fichiers de l'appli
+        run: git diff --exit-code -- index.html sw.js manifest.webmanifest
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: preuves-des-echecs
           path: test-results/
           retention-days: 7
+
+  controle-sabotage:
+    name: Contrôle de sabotage (chaque bug connu doit faire échouer son test)
+    needs: controles-statiques
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Installer les dépendances de test (versions du fichier verrou)
+        run: npm ci
+      - name: Installer les navigateurs de test
+        run: npx playwright install --with-deps chromium webkit
+      - name: Sabotages (index.html est restauré par le script, copie de secours comprise)
+        run: node tests/sabotage.js
+      - name: Le script de sabotage a bien tout remis en place
+        if: always()
+        run: git diff --exit-code -- index.html && test ! -e index.html.sabotage_bak
