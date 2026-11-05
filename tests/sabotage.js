@@ -8,6 +8,9 @@ const sabotages = [
   { nom: "E-013 : le crate inutilisable est de nouveau téléchargé", projet: "chrome", test: "aucun fichier crate", de: "if(!root){crateImpossible();return;}", vers: "if(!root){download(new Blob([buildCrate(items.map(x=>x.path))]),`SetMate%%${safeName(name)}.crate`);return;}" },
   { nom: "E-007 : le limiteur de requêtes est désactivé", projet: "chrome", test: "aucun refus de quota", de: 'await dzGate(prio==="low");', vers: "" },
   { nom: "E-008 : les redessins ne respectent plus le geste", projet: "chrome", test: "aucun redessin automatique", de: "if(wait>0){if(!lrT)", vers: "if(false){if(!lrT)" },
+  { nom: "P0-01 : une transaction annulée est de nouveau annoncée comme réussie", projet: "chrome", test: "P0-01 transaction annulée", de: "tx.onabort=()=>fail(tx.error||reqErr);", vers: "tx.onabort=()=>{done=true;res();};" },
+  { nom: "P0-01 : la relecture de vérification est supprimée", projet: "chrome", test: "P0-01 relecture", de: "if(bad){fail(null,\"verify\");}else{done=true;res();}", vers: "done=true;res();" },
+  { nom: "P0-01 : pagehide ne force plus l'écriture", projet: "chrome", test: "P0-01 fermeture de page", de: 'window.addEventListener("pagehide",()=>{if(SAVE.dirty||tracksDirty)flushSave().catch(()=>{});});', vers: "" },
   { nom: "version : index.html et sw.js divergent", projet: "chrome", test: "charge sans erreur", de: /const VERSION="([^"]+)"/, vers: 'const VERSION="0.0.0-sabotage"' }
 ];
 let tous = true;

@@ -280,7 +280,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:var(--panel3);padding:1px
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.9.1";
+const VERSION="1.9.2-p0";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -290,11 +290,39 @@ const FSA=typeof window.showDirectoryPicker==="function";
 const MOBILE=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&matchMedia("(pointer:coarse)").matches);
 
 /* ===================== STOCKAGE LOCAL (IndexedDB) ===================== */
+const isQuota=e=>!!e&&(e.quota===true||e.name==="QuotaExceededError"||e.code===22||e.name==="NS_ERROR_DOM_QUOTA_REACHED"||/quota/i.test(String(e.message||"")));
+/** Erreur de stockage exploitable : .quota (disque plein), .kind ("unavailable" | "quota" | "abort" | "verify" | "other"), .dbName (nom technique), .message (français). */
+function dbErr(e,kind){if(e&&e.isDbErr)return e;const q=isQuota(e),k=kind||(q?"quota":e&&e.name==="AbortError"?"abort":"other");
+  const x=new Error(q?"Stockage plein sur cet appareil : l’écriture a été refusée.":k==="unavailable"?"Le stockage de ce navigateur est indisponible.":k==="verify"?"L’écriture n’a pas pu être vérifiée : la donnée relue ne correspond pas.":"Le navigateur n’a pas confirmé l’écriture ("+((e&&e.name)||"annulée")+").");
+  x.isDbErr=true;x.quota=q;x.kind=q?"quota":k;x.dbName=(e&&e.name)||"";return x;}
 const DB={db:null,ok:true,
-  open(){return new Promise(res=>{try{const r=indexedDB.open("setmate",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>{DB.db=r.result;res()};r.onerror=()=>{DB.ok=false;res()};}catch(e){DB.ok=false;res()}});},
-  get(k){if(!DB.db)return Promise.resolve(undefined);return new Promise(res=>{const t=DB.db.transaction("kv").objectStore("kv").get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>res(undefined);});},
-  set(k,v){if(!DB.db)return Promise.resolve();return new Promise(res=>{try{const t=DB.db.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=()=>res();t.onerror=()=>res();}catch(e){res()}});},
-  del(k){if(!DB.db)return Promise.resolve();return new Promise(res=>{const t=DB.db.transaction("kv","readwrite");t.objectStore("kv").delete(k);t.oncomplete=()=>res();});}};
+  open(){return new Promise(res=>{try{const r=indexedDB.open("setmate",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>{DB.db=r.result;DB.ok=true;res()};r.onerror=()=>{DB.ok=false;res()};}catch(e){DB.ok=false;res()}});},
+  get(k){if(!DB.db)return Promise.resolve(undefined);return new Promise(res=>{try{const t=DB.db.transaction("kv").objectStore("kv").get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>res(undefined);}catch(e){res(undefined)}});},
+  /** Relecture qui REFUSE (au lieu de répondre « rien ») quand la lecture échoue. Sert à vérifier les écritures. */
+  read(k){return new Promise((res,rej)=>{try{const t=DB.db.transaction("kv").objectStore("kv").get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>rej(dbErr(t.error,"verify"));}catch(e){rej(dbErr(e,"verify"))}});},
+  /** Forme d’une valeur AU MOMENT de l’écriture (la liste vivante peut changer pendant l’attente) : taille des listes, nombre de clés, taille des fichiers. */
+  shape(a){if(Array.isArray(a))return ["a",a.length];if(typeof Blob!=="undefined"&&a instanceof Blob)return ["b",a.size];
+    if(a===null)return ["n",0];if(a&&typeof a==="object"&&Object.getPrototypeOf(a)===Object.prototype)return ["o",Object.keys(a).length];return ["p",0];},
+  match(sh,b){if(b===undefined)return false;if(sh[0]==="a")return Array.isArray(b)&&b.length===sh[1];if(sh[0]==="b")return b instanceof Blob&&b.size===sh[1];
+    if(sh[0]==="n")return b===null;if(sh[0]==="o")return !!b&&typeof b==="object"&&Object.keys(b).length===sh[1];return true;},
+  /** Une écriture n’est « réussie » qu’après l’événement de FIN DE TRANSACTION puis une relecture concordante. Sinon : rejet avec une erreur dbErr. */
+  _run(ops){return new Promise((res,rej)=>{
+    if(!DB.db)return rej(dbErr(null,"unavailable"));
+    const shapes=ops.map(o=>o[0]==="put"?DB.shape(o[2]):null);
+    let tx=null,done=false,reqErr=null;const fail=(e,k)=>{if(done)return;done=true;rej(dbErr(e,k))};
+    try{try{tx=DB.db.transaction("kv","readwrite",{durability:"strict"});}catch(e0){tx=DB.db.transaction("kv","readwrite");}
+      const st=tx.objectStore("kv");
+      tx.oncomplete=()=>{if(done)return;Promise.all(ops.map(o=>DB.read(o[1]))).then(vals=>{
+          const bad=ops.find((o,i)=>o[0]==="put"?!DB.match(shapes[i],vals[i]):vals[i]!==undefined);
+          if(bad){fail(null,"verify");}else{done=true;res();}},e=>fail(e,"verify"));};
+      tx.onerror=ev=>{reqErr=(ev&&ev.target&&ev.target.error)||reqErr;};
+      tx.onabort=()=>fail(tx.error||reqErr);
+      for(const o of ops){if(o[0]==="put")st.put(o[2],o[1]);else st.delete(o[1]);}
+    }catch(e){try{if(tx)tx.abort();}catch(e2){}fail(e);}});},
+  setMany(entries){return DB._run(entries.map(e=>["put",e[0],e[1]]));},
+  set(k,v){return DB._run([["put",k,v]]);},
+  delMany(keys){return DB._run(keys.map(k=>["del",k]));},
+  del(k){return DB._run([["del",k]]);}};
 
 const S={
   screen:"home",name:"",demo:false,tracks:[],nextN:1,userRoot:"",musicPrefix:"",
@@ -312,16 +340,45 @@ let byN=new Map(),byPath=new Map();
 function reindex(){byN=new Map();byPath=new Map();S.tracks.forEach(t=>{byN.set(t.n,t);byPath.set(t.path,t)});}
 const T=n=>byN.get(n);
 let saveT=null,tracksDirty=false;
-function save(tracksToo=false){if(tracksToo)tracksDirty=true;clearTimeout(saveT);saveT=setTimeout(async()=>{
-  const st={};for(const k of ["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge","pls","own","lsTab","seenV","am","recTab"])st[k]=S[k];
-  await DB.set("state",st);if(tracksDirty){await DB.set("tracks",S.tracks);tracksDirty=false;}},400);}
+const SAVE_KEYS=["name","demo","realSnap","nextN","userRoot","musicPrefix","set","cur","dir","crates","L","P","rules","genreFix","todo","notifs","gigs","created","trends","trendCache","genres","dlLast","onboarded","disc","found","styles","tips","trTab","flags","reco","seratoVer","seratoDbAge","pls","own","lsTab","seenV","am","recTab"];
+const SAVE={dirty:false,fail:null,chain:null,retryT:null,lastWarn:0};
+function snapState(){const st={};for(const k of SAVE_KEYS)st[k]=S[k];return st;}
+/** Message clair pour l’utilisateur selon la cause de l’échec d’écriture. */
+function saveFailMsg(e){
+  if(e&&e.quota)return "Stockage plein : tes dernières modifications ne sont PAS enregistrées sur cet appareil. Libère de la place (fichiers audio gardés hors ligne, autres applis), puis touche « Réessayer ». Ce qui était déjà enregistré reste intact.";
+  if(e&&e.kind==="unavailable")return "Le stockage de ce navigateur est indisponible (navigation privée ?) : tes modifications ne sont PAS gardées. Utilise « Sauvegarder mes données » pour ne rien perdre.";
+  return "L’enregistrement a échoué"+(e&&e.dbName?" ("+esc(e.dbName)+")":"")+" : tes dernières modifications ne sont PAS gardées. Réessaie ; sinon utilise « Sauvegarder mes données ».";}
+function updSaveBadge(){
+  if(SAVE.dirty||tracksDirty||SAVE.fail)document.documentElement.dataset.unsaved="1";else delete document.documentElement.dataset.unsaved;
+  let b=document.getElementById("saveBadge");
+  if(!SAVE.fail){if(b)b.remove();return;}
+  if(!b){b=document.createElement("button");b.id="saveBadge";b.className="btn red sm";b.style.cssText="position:fixed;left:12px;bottom:12px;z-index:9999;max-width:calc(100vw - 24px)";
+    b.onclick=async()=>{try{await flushSave();}catch(e){toast(saveFailMsg(e),false,true);}};document.body.appendChild(b);}
+  b.textContent="Modifications non enregistrées · Réessayer";b.title=saveFailMsg(SAVE.fail).replace(/<[^>]*>/g,"");}
+function save(tracksToo=false){if(tracksToo)tracksDirty=true;SAVE.dirty=true;updSaveBadge();clearTimeout(saveT);saveT=setTimeout(()=>{flushSave().catch(()=>{});},400);}
+/** Écrit tout de suite (state + sons dans UNE transaction). Résout après confirmation de la transaction et relecture ; rejette sinon. */
+function flushSave(){clearTimeout(saveT);saveT=null;SAVE.chain=(SAVE.chain||Promise.resolve()).catch(()=>{}).then(doFlush);return SAVE.chain;}
+async function doFlush(){
+  if(!SAVE.dirty&&!tracksDirty&&!SAVE.fail)return true;
+  const wasTracks=tracksDirty;SAVE.dirty=false;const entries=[["state",snapState()]];if(wasTracks)entries.push(["tracks",S.tracks]);
+  try{const p=DB.setMany(entries);if(wasTracks)tracksDirty=false;await p;
+    const rec=!!SAVE.fail;SAVE.fail=null;clearTimeout(SAVE.retryT);SAVE.retryT=null;updSaveBadge();if(rec)toast("Enregistrement rétabli : tes modifications sont gardées.");return true;}
+  catch(e){SAVE.dirty=true;if(wasTracks)tracksDirty=true;SAVE.fail=e;updSaveBadge();
+    try{logErr("stockage",(e.kind||"")+" "+(e.dbName||"")+" "+e.message,"save");}catch(e2){}
+    if(Date.now()-SAVE.lastWarn>60000){SAVE.lastWarn=Date.now();try{toast(saveFailMsg(e),false,true);}catch(e2){}}
+    if(!SAVE.retryT)SAVE.retryT=setTimeout(()=>{SAVE.retryT=null;flushSave().catch(()=>{});},15000);
+    throw e;}}
+// Fermeture ou mise en arrière-plan de la page (iPhone) : on n’attend pas les 400 ms.
+window.addEventListener("pagehide",()=>{if(SAVE.dirty||tracksDirty)flushSave().catch(()=>{});});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&(SAVE.dirty||tracksDirty))flushSave().catch(()=>{});});
+window.addEventListener("beforeunload",ev=>{if(SAVE.fail){ev.preventDefault();ev.returnValue="";}});
 async function load(){
   await DB.open();
   const st=await DB.get("state");if(st)Object.assign(S,st);
   // reprise des données de la version 1.0
   (S.trends.items||[]).forEach((x,i)=>{if(x.pos==null)x.pos=x.rank||i+1;});
   S.disc=Object.assign({items:[],extra:[],seen:[],usedPl:[],qi:{}},S.disc||{});S.search={q:"",items:[]};
-  S.tracks=(await DB.get("tracks"))||[];reindex();
+  S.tracks=(await DB.get("tracks"));if(!Array.isArray(S.tracks))S.tracks=[];reindex();
   // reprise de la version 1.1 : l’ancienne liste à part devient des sons de sa musique « à récupérer »
   if((S.todo||[]).length){for(const t of S.todo){if(t.src==="auto")continue;
       if(t.src==="qualite"){const x=S.tracks.find(y=>baseTitle(y.t)===baseTitle(t.t));if(x)x.upgrade=true;continue;}
@@ -559,7 +616,7 @@ async function pickDir(k){
   let h;try{h=await window.showDirectoryPicker(opt);}catch(e){if(e.name!=="AbortError")toast("Accès refusé : "+esc(e.message),false,true);return false;}
   if(k==="serato"){let ok=false;try{await h.getFileHandle("database V2");ok=true;}catch(e){}
     if(!ok){toast("Ce dossier ne contient pas de base Serato. Choisis le dossier <b>_Serato_</b> dans Musique.",false,true);return false;}}
-  H[k]=h;PERM[k]="granted";await DB.set("h_"+k,h);
+  H[k]=h;PERM[k]="granted";try{await DB.set("h_"+k,h);}catch(e){toast("Le dossier est utilisable maintenant, mais SetMate n’a pas pu le mémoriser : "+(e.quota?"stockage plein.":"écriture refusée.")+" Il faudra le reconnecter au prochain lancement.",false,true);}
   if(k==="serato"){exitDemoState();await loadSerato(true);}
   if(k==="music")await mapMusic();
   if(k==="dl"){S.dlLast=Date.now()-36e5;save();startWatch();}
@@ -1412,7 +1469,7 @@ function showSuggLog(){const rows=SESS.log.slice(-60).reverse();
 function exportData(){const st={...S,undo:undefined};download(new Blob([JSON.stringify({setmate:VERSION,date:Date.now(),state:st})],{type:"application/json"}),`SetMate sauvegarde ${new Date().toISOString().slice(0,10)}.json`);toast("Sauvegarde téléchargée.");}
 function importData(){const i=$("#fileIn");i.accept=".json";i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!d.setmate)throw new Error("fichier non reconnu");await restoreState(d);}catch(e){toast("Restauration impossible : "+esc(e.message),false,true);}i.value="";};i.click();}
 function resetAll(){modal(`<h2>Tout effacer ?</h2><p class="hint mt2">Efface les données SetMate de ce navigateur (bibliothèque lue, soirées, débriefs, préférences). Tes fichiers et ta bibliothèque Serato ne sont pas touchés.</p><div class="row mt" style="justify-content:flex-end"><button class="btn ghost" onclick="closeModal()">Annuler</button><button class="btn red" onclick="doReset()">Effacer</button></div>`);}
-async function doReset(){for(const k of ["state","tracks","h_serato","h_music","h_dl",...(S.own||[]).map(o=>"file_"+o.fid)])await DB.del(k);location.reload();}
+async function doReset(){try{await DB.delMany(["state","tracks","backup_prev","h_serato","h_music","h_dl",...(S.own||[]).map(o=>"file_"+o.fid)]);}catch(e){closeModal();return toast("Effacement impossible : "+esc(e.message)+" Tes données n’ont pas été touchées.",false,true);}location.reload();}
 
 /* ===================== LECTEUR ===================== */
 const AU=new Audio();let PL=null,progT=null;const DZC={};
@@ -1488,7 +1545,7 @@ function renderPlayer(){const p=$("#player");p.style.display=(!PL&&MOBILE)?"none
     <button class="mi hm" onclick="startRadio()" aria-label="Radio" data-tip="Radio : des sons du même univers">${svg("radio",15)}</button>${keyTag(x.k)}`;}
 
 /* ---------- Fichiers du téléphone (hors connexion) ---------- */
-function dbPut(k,v){return new Promise((res,rej)=>{try{const t=DB.db.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=()=>res();t.onerror=t.onabort=()=>rej(t.error||new Error("stockage plein"));}catch(e){rej(e);}});}
+function dbPut(k,v){return DB.set(k,v);}
 function parseName(name){let s=String(name||"").replace(/\.[a-z0-9]{2,4}$/i,"").replace(/_/g," ").replace(/^\s*\d{1,3}\s*[-.)]\s*/,"").trim();
   const p=s.split(/\s+[-–—]\s+/);return p.length>1?{a:p[0].trim(),t:p.slice(1).join(" - ").trim()}:{a:"",t:s};}
 function addOwnFiles(){if(!DB.db)return toast("Stockage indisponible dans ce navigateur.",false,true);const i=$("#fileIn");i.accept="audio/*,.mp3,.m4a,.aac,.wav,.aif,.aiff,.flac";i.multiple=true;
@@ -1505,7 +1562,7 @@ async function playOwn(fid,force=false){const u="f"+fid;if(!force&&PL&&PL.u===u)
   startProg();renderPlayer();refreshPlay();}
 function ownPlay(i=0,rand=false){qStart(S.own.map(o=>({fid:o.fid,t:o.t,a:o.a})),i,"Sur ce téléphone",rand);}
 async function ownRm(fid){const i=S.own.findIndex(o=>o.fid===fid);if(i<0)return;const o=S.own[i],b=await DB.get("file_"+fid);
-  if(PL&&PL.u==="f"+fid)stopPlay();S.own.splice(i,1);await DB.del("file_"+fid);save();
+  if(PL&&PL.u==="f"+fid)stopPlay();try{await DB.del("file_"+fid);}catch(e){return toast("Suppression impossible : "+esc(e.message),false,true);}S.own.splice(i,1);save();
   pushUndo("suppression du fichier",async()=>{if(b)await dbPut("file_"+fid,b);S.own.splice(i,0,o);save();softRender();});toast(`« ${esc(o.t)} » retiré de ce téléphone.`,true);softRender();}
 const ownMatch=x=>(S.own||[]).find(o=>baseTitle(o.t)===baseTitle(x.t)&&(!o.a||!x.a||norm(o.a).includes(" "+norm(x.a).trim().split(" ")[0]+" ")));
 async function listenAfter(){const el=$("#stoInfo");if(!el||!navigator.storage||!navigator.storage.estimate)return;
@@ -1679,7 +1736,7 @@ Object.assign(IC,{share:'<path d="M12 3v13"/><path d="M7 8l5-5 5 5"/><path d="M5
 /* ---------- Boîte noire : chaque erreur est notée sur l’appareil, rien n’est envoyé sans toi ---------- */
 const LOG=[];let logT=null;
 function logErr(k,m,s){LOG.push({d:new Date().toISOString(),v:VERSION,k,m:String(m||"").slice(0,300),s:String(s||"").slice(0,120),e:S.screen});
-  if(LOG.length>100)LOG.splice(0,LOG.length-100);clearTimeout(logT);logT=setTimeout(()=>DB.set("log",LOG),500);}
+  if(LOG.length>100)LOG.splice(0,LOG.length-100);clearTimeout(logT);logT=setTimeout(()=>{DB.set("log",LOG).catch(()=>{});},500);}
 window.addEventListener("error",e=>logErr("erreur",e.message,String(e.filename||"").split("/").pop()+":"+e.lineno));
 window.addEventListener("unhandledrejection",e=>logErr("promesse",e.reason&&(e.reason.message||e.reason)));
 AU.addEventListener("error",()=>{if(PL&&AU.src!==SIL)logErr("audio",AU.error?("code "+AU.error.code+" "+(AU.error.message||"")):"?",PL.src);});
@@ -1692,7 +1749,7 @@ AU.addEventListener("error",()=>ev("audio:code",AU.error?(AU.error.code+" "+(AU.
 ["play","pause","ended","waiting","stalled","playing","error"].forEach(n=>AU.addEventListener(n,()=>ev("audio:"+n,PL?PL.x.t:"")));
 document.addEventListener("visibilitychange",()=>ev("page:"+document.visibilityState));
 let logLoaded=false;
-async function loadLog(){try{const old=await DB.get("log");if(old&&old.length)LOG.unshift(...old);if(LOG.length>100)LOG.splice(0,LOG.length-100);}catch(e){}logLoaded=true;if(LOG.length)DB.set("log",LOG);}
+async function loadLog(){try{const old=await DB.get("log");if(old&&old.length)LOG.unshift(...old);if(LOG.length>100)LOG.splice(0,LOG.length-100);}catch(e){}logLoaded=true;if(LOG.length)DB.set("log",LOG).catch(()=>{});}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
 
 /* ---------- Enchaînement sans coupure : le son suivant est prêt AVANT la fin du son en cours ---------- */
@@ -1853,7 +1910,7 @@ function sendReport(){const R=window._diag||[],ic={ok:"OK",warn:"ATTENTION",ko:"
   const txt=`Rapport SetMate ${VERSION} · ${devName()} · ${installed()?"appli installée":"navigateur"} · ${new Date().toLocaleString("fr-FR")}\n\n`+R.map(r=>`${ic[r.ok]} · ${r.t} : ${r.d}`).join("\n")+
     `\n\nJournal de lecture (${Math.min(EVT.length,40)} derniers) :\n`+(EVT.slice(-40).join("\n")||"vide")+`\n\nBoîte noire (${LOG.length}) :\n`+(LOG.slice(-30).map(l=>`${l.d.slice(5,16)} [${l.k}] ${l.m}${l.s?" ("+l.s+")":""} · écran ${l.e}`).join("\n")||"vide");
   shareOut({title:"Rapport SetMate",text:txt});}
-function clearLog(){LOG.length=0;DB.set("log",[]);toast("Boîte noire vidée.");softRender();}
+function clearLog(){LOG.length=0;DB.set("log",[]).catch(()=>{});toast("Boîte noire vidée.");softRender();}
 const _vSet=VIEWS.settings;
 VIEWS.settings=()=>_vSet()+`<div class="card mt"><h3>${svg("share",16)} Transférer mes données</h3><p class="hint mt2">Passe ta musique analysée, tes playlists, tes sets et tes soirées d’un appareil à l’autre (Mac, iPhone, Safari, appli installée) par AirDrop, Fichiers ou WhatsApp. Tes fichiers audio ne sont pas dedans.</p><div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="shareData()">${svg("share",14)}Envoyer mes données</button><button class="btn ghost" onclick="importData()">Recevoir des données</button></div></div>`+`<div class="card mt"><h3>${svg("diag",16)} Diagnostic de cet appareil</h3><p class="hint mt2">Teste en 10 secondes ce que ton téléphone permet vraiment, et envoie-moi le rapport. Boîte noire : ${LOG.length?pl(LOG.length,"erreur")+" notée"+(LOG.length>1?"s":""):"aucune erreur notée"}.</p>
   <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="runDiag()">Lancer le diagnostic</button><button class="btn ghost" onclick="startLockTest()">Test écran verrouillé</button>${LOG.length?`<button class="btn ghost sm" onclick="runDiag()">Envoyer le journal</button><button class="btn ghost sm" onclick="clearLog()">Vider la boîte noire</button>`:""}</div></div>`;
