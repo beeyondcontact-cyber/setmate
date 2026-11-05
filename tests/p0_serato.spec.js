@@ -230,8 +230,8 @@ test("P0-04 M3U8 : chemins Windows et cas limites", async ({ page }) => {
   const cas = [
     ["Users/ines/Music/a.mp3", "/Users/ines/Music/a.mp3"],
     ["/Users/ines/Music/a.mp3", "/Users/ines/Music/a.mp3"],
-    ["C:\\Users\\Sabri\\Music\\a.mp3", "C:\\Users\\Sabri\\Music\\a.mp3"],
-    ["C:/Users/Sabri/Music/a.mp3", "C:\\Users\\Sabri\\Music\\a.mp3"],
+    ["C:\\Users\\dj\\Music\\a.mp3", "C:\\Users\\dj\\Music\\a.mp3"],
+    ["C:/Users/dj/Music/a.mp3", "C:\\Users\\dj\\Music\\a.mp3"],
     ["d:\\Musique DJ\\Mon Dossier\\a b.mp3", "D:\\Musique DJ\\Mon Dossier\\a b.mp3"],
     ["E:\\Été\\ça va.flac", "E:\\Été\\ça va.flac"],
     ["D:\\\\Double\\\\sep.mp3", "D:\\Double\\sep.mp3"],

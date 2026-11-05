@@ -2,7 +2,7 @@
 //  - pistes_reference.json : pistes inventées (accents, arabe, néerlandais, emoji, chemins Windows, cas à refuser)
 //  - attendu_set.m3u8      : ce que l'export M3U8 doit produire (écrit ici par un formateur séparé, d'après la spécification du test)
 //  - bibliotheque_test/_Serato_/ : une fausse bibliothèque Serato (database V2 + 1 crate) fabriquée avec un encodeur séparé
-// Aucun fichier personnel de Sabri, aucun vrai dossier _Serato_. Usage : node tests/fixtures/serato/fabriquer_reference.js
+// Aucun fichier personnel de dj, aucun vrai dossier _Serato_. Usage : node tests/fixtures/serato/fabriquer_reference.js
 const fs = require("fs"), path = require("path");
 const ici = __dirname;
 
@@ -14,7 +14,7 @@ const pistes = [
   { n: 5, t: "Fête 🎉🔥 𝄞", a: "DJ Émoji", path: "Users/ines/Music/Fête 🎉🔥.mp3" },
   { n: 6, t: "Titre à récupérer", a: "Absent", path: "Users/ines/Music/absent.mp3", wish: true },
   { n: 7, t: "Windows D", a: "Artiste Lecteur", path: "D:\\Musique DJ\\Été 2026\\Track 01.mp3" },
-  { n: 8, t: "Windows slash", a: "Artiste Mixte", path: "c:/Users/Sabri/Music/a b/c d.mp3" },
+  { n: 8, t: "Windows slash", a: "Artiste Mixte", path: "c:/Users/dj/Music/a b/c d.mp3" },
   { n: 9, t: "Réseau", a: "NAS", path: "\\\\NAS\\musique\\z.mp3" },
   { n: 10, t: "Lecteur relatif", a: "X", path: "D:fichier.mp3" },
   { n: 11, t: "Titre\nsur deux lignes", a: "Piège", path: "Users/ines/Music/ok.mp3" },
@@ -34,7 +34,7 @@ const attendu = [
   "#EXTINF:-1,Zoë Çelik - Ik ben een ijsbeer ĳs", "/Users/ines/Music/Zoë Çelik - ijsbeer.mp3",
   "#EXTINF:-1,DJ Émoji - Fête 🎉🔥 𝄞", "/Users/ines/Music/Fête 🎉🔥.mp3",
   "#EXTINF:-1,Artiste Lecteur - Windows D", "D:\\Musique DJ\\Été 2026\\Track 01.mp3",
-  "#EXTINF:-1,Artiste Mixte - Windows slash", "C:\\Users\\Sabri\\Music\\a b\\c d.mp3",
+  "#EXTINF:-1,Artiste Mixte - Windows slash", "C:\\Users\\dj\\Music\\a b\\c d.mp3",
   "#EXTINF:-1,Piège - Titre sur deux lignes", "/Users/ines/Music/ok.mp3",
   "#EXTINF:-1,Sans artiste", "/Users/ines/Music/sans artiste.mp3"
 ].join("\n") + "\n";
