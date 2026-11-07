@@ -322,7 +322,7 @@ select.f{color-scheme:dark;-webkit-appearance:none;appearance:none;padding-right
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.10.0";
+const VERSION="1.10.1";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -964,7 +964,7 @@ function setPanel(){const items=S.set.ids.map(T).filter(Boolean);const W=280,H2=
   const gig=S.gigs.find(g=>g.id===S.set.gig);
   return `<div class="card mt"><div class="row between"><div class="row" style="gap:8px"><h3>Set en cours</h3><input class="f" value="${esc(S.set.name)}" onchange="S.set.name=this.value;save()" style="padding:4px 8px;font-size:12px;width:200px">
       <select class="f" style="padding:4px 8px;font-size:12px" onchange="S.set.gig=+this.value||null;save();render()"><option value="">Lier à une soirée…</option>${S.gigs.map(g=>`<option value="${g.id}" ${g.id===S.set.gig?"selected":""}>${fmtDate(g.date)} · ${esc(g.lieu)}</option>`).join("")}</select></div>
-    <div class="row" style="gap:8px"><button class="btn ghost sm" onclick="clearSet()">Vider</button><button class="btn ghost sm" onclick="importSet()">${svg("imp",13)}Importer un set</button><button class="btn ghost sm" onclick="playSet()">${svg("play",13)}Écouter le set</button><button class="btn ghost sm" onclick="saveList('set')">${svg("plplus",13)}Playlist</button><button class="btn ghost sm" onclick="shareSet()">${svg("share",13)}Partager</button><button class="btn ghost sm" onclick="exportM3Uchoose()">${svg("dl",13)}Playlist M3U</button><button class="btn sm" onclick="exportSetCrate()">Crate Serato</button><button class="btn orange sm" onclick="exportUsb()">${svg("usb",14)}Copier sur clé USB</button></div></div>
+    <div class="row" style="gap:8px"><button class="btn ghost sm" onclick="clearSet()">Vider</button><button class="btn ghost sm" onclick="importSet()">${svg("imp",13)}Importer un set</button><button class="btn ghost sm" onclick="playSet()">${svg("play",13)}Écouter le set</button><button class="btn sm" id="sendBtn" onclick="sendMenu()">${svg("share",13)}Envoyer…</button></div></div>
     <div class="row mt2" style="gap:18px"><span class="hint"><b style="color:var(--txt)">${items.length}</b> sons · ≈ <b style="color:var(--txt)">${Math.round(items.length*3.4)} min</b>${items.some(x=>x.bpm)?` · BPM ${Math.round(Math.min(...items.filter(x=>x.bpm).map(x=>x.bpm)))} à ${Math.round(Math.max(...items.filter(x=>x.bpm).map(x=>x.bpm)))}`:""}${gig?` · pour ${esc(gig.lieu)} (${fmtDate(gig.date)})`:""}</span></div>
     ${items.some(x=>x.wish)?`<p class="mt2 clk" style="color:var(--orange);font-size:13px" onclick="S.trTab='liste';go('trend')">${pl(items.filter(x=>x.wish).length,"son")} du set à récupérer avant la soirée →</p>`:""}
     ${items.length>1&&items.some(x=>x.e)?`<svg viewBox="0 0 ${W} ${H2}" style="width:100%;max-width:340px;height:${H2}px"><polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--orange)" stroke-width="2"/>${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="var(--orange)" stroke="var(--panel)" stroke-width="2" data-tip="${i+1}. ${esc(items[i].t)} · énergie ${items[i].e||"?"}"/>`).join("")}</svg>`:""}
@@ -2012,14 +2012,36 @@ async function embedAM(){if(!TM)return;toast("Je cherche dans Apple Music…");
 
 /* ---------- Envoyer une playlist vers Apple Music (raccourci iPhone) ---------- */
 const SC_NAME="SetMate Apple Music";
-async function sendToApple(id){const p=plGet(id);if(!p||!p.items.length)return;const txt=p.items.map(x=>(x.a?x.a+" - ":"")+x.t).join("\n");let ok=false;
+/* 1.10 · Envoyer une liste vers Apple Music par le raccourci iPhone. Serato DJ sur iPhone affiche tes playlists Apple Music
+   (page officielle Serato « Serato DJ & Apple Music »), donc c'est aussi le chemin vers Serato mobile. Non testé de bout en bout sur iPhone. */
+let AMTXT="";
+const amText=items=>items.map(x=>(x.a?x.a+" - ":"")+x.t).join("\n");
+/** Texte passé directement au raccourci si la liste est courte ; sinon via le presse-papiers (limite d'une adresse). */
+function amRunUrl(txt){const e=encodeURIComponent(txt);return "shortcuts://run-shortcut?name="+encodeURIComponent(SC_NAME)+(e.length<3500?"&input=text&text="+e:"&input=clipboard");}
+async function sendToApple(id){const p=plGet(id);if(!p||!p.items.length)return;return sendListToApple(p.name,p.items);}
+function sendSetToApple(){const items=S.set.ids.map(T).filter(Boolean).map(t=>({t:t.t,a:t.a}));if(!items.length)return toast("Ton set est vide.",false,true);sendListToApple(S.set.name,items);}
+async function sendListToApple(name,items){const txt=amText(items);AMTXT=txt;let ok=false;
   try{await navigator.clipboard.writeText(txt);ok=true;}catch(e){}
-  modal(`<h2>Envoyer vers Apple Music</h2><p class="hint mt2">« ${esc(p.name)} » · ${pl(p.items.length,"son")}. ${ok?"<b style='color:var(--green)'>La liste est copiée.</b>":"Copie automatique impossible : touche « Copier la liste »."}</p>
-   <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="location.href='shortcuts://run-shortcut?name=${encodeURIComponent(SC_NAME)}&input=clipboard'">Lancer mon raccourci</button><button class="btn ghost" onclick="plExport('${p.id}','copy')">Copier la liste</button></div>
-   <p class="hint mt2">Le bouton lance le raccourci « ${SC_NAME} » de ton iPhone avec la liste copiée. Il n’existe pas encore : on le construit ensemble (une seule fois).</p>
+  modal(`<h2>Envoyer vers Apple Music</h2><p class="hint mt2">« ${esc(name)} » · ${pl(items.length,"son")}. ${ok?"<b style='color:var(--green)'>La liste est aussi copiée.</b>":"Copie automatique impossible : touche « Copier la liste »."}</p>
+   <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" id="amGo" onclick="location.href=amRunUrl(AMTXT)">Lancer mon raccourci</button><button class="btn ghost" onclick="navigator.clipboard.writeText(AMTXT).then(()=>toast('Liste copiée.',true),()=>toast('Copie impossible.',false,true))">Copier la liste</button></div>
+   <p class="hint mt2">Le bouton lance le raccourci « ${SC_NAME} » de ton iPhone avec la liste. Il n’existe pas encore : on le construit ensemble (une seule fois).</p>
+   <div class="card mt" style="background:var(--panel2);padding:12px;font-size:13px"><b>Ensuite, dans Serato sur iPhone</b><br>Ouvre l’onglet <b>Apple Music</b> : la playlist <b>SetMate</b> doit apparaître dans tes playlists (Serato indique que tes playlists apparaissent toutes seules une fois le compte connecté). <span style="color:var(--orange)">Non testé de bout en bout.</span></div>
    <details class="mt"><summary class="hint clk">Recette du raccourci (non testée)</summary><div class="banner mt2"><b>Non testée.</b> Je l’ai écrite sans pouvoir l’essayer. Les actions de Raccourcis peuvent se comporter autrement. Dis-moi ce qui coince, on corrige.</div>
-   <ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Dans <b>Musique</b>, crée une playlist vide nommée <b>SetMate</b> (certains rapports disent que l’action d’ajout ne marche que sur une playlist qui existe déjà).</li><li>Dans <b>Raccourcis</b>, nouveau raccourci nommé <b>${SC_NAME}</b>.</li><li>Actions : <b>Obtenir le presse-papiers</b>, puis <b>Diviser le texte</b> (par nouvelles lignes), puis <b>Répéter avec chaque élément</b>.</li><li>Dans la répétition : <b>Rechercher dans l’iTunes Store</b> (ou <b>Rechercher de la musique</b>) avec l’élément répété, limite 1, puis <b>Ajouter à la playlist SetMate</b>.</li></ol></details>`);}
+   <ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Dans <b>Musique</b>, crée une playlist vide nommée <b>SetMate</b> (certains rapports disent que l’action d’ajout ne marche que sur une playlist qui existe déjà).</li><li>Dans <b>Raccourcis</b>, nouveau raccourci nommé <b>${SC_NAME}</b>.</li><li>Actions : <b>Entrée du raccourci</b> (le texte envoyé par SetMate ; si vide, <b>Obtenir le presse-papiers</b>), puis <b>Diviser le texte</b> (par nouvelles lignes), puis <b>Répéter avec chaque élément</b>.</li><li>Dans la répétition : <b>Rechercher dans l’iTunes Store</b> (ou <b>Rechercher de la musique</b>) avec l’élément répété, limite 1, puis <b>Ajouter à la playlist SetMate</b>.</li></ol></details>`);}
 
+
+/* 1.10 · Un seul bouton « Envoyer » pour le set (avant : 5 boutons). Chaque destination dit ce qui a été testé. */
+function sendMenu(){const n=S.set.ids.length;if(!n)return toast("Ton set est vide.",false,true);
+  const ok='<span style="color:var(--green)">Testé</span>',no='<span style="color:var(--orange)">Non testé</span>';
+  const row=(ic,t,d,act,tag)=>`<div class="conn"><div style="flex:1;min-width:0"><b>${svg(ic,14)} ${t}</b><div class="hint">${d} · ${tag}</div></div><button class="btn sm ghost" onclick="closeModal();${act}">Choisir</button></div>`;
+  modal(`<h2>Envoyer mon set</h2><p class="hint mt2">« ${esc(S.set.name)} » · ${pl(n,"son")}</p><div class="mt">
+   ${row("apple","Apple Music, puis Serato sur iPhone","Crée la playlist dans Apple Music par ton raccourci ; Serato mobile affiche tes playlists Apple Music","sendSetToApple()",no)}
+   ${row("dl","Playlist M3U pour Serato (ordinateur)","À glisser dans l’onglet Files puis sur Crates ; tu choisis Windows ou Mac","exportM3Uchoose()",ok+" sur Serato 5, Windows")}
+   ${row("folder","Crate Serato (écrite par SetMate)","Chrome ou Edge, Serato fermé ; apparaît quand tu relances Serato","exportSetCrate()",ok+" sur Serato 5, Windows")}
+   ${row("usb","Clé USB","Copie les fichiers du set sur une clé","exportUsb()",no)}
+   ${row("share","Partager la liste","Texte ou fichier, pour un autre DJ","shareSet()",ok)}
+   ${row("plplus","Enregistrer en playlist SetMate","Garde ce set dans tes playlists","saveList('set')",ok)}
+  </div><div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Fermer</button></div>`);}
 /* ---------- Historique et playlists depuis les exports officiels ---------- */
 function histoModal(){modal(`<h2>Mon historique et mes playlists</h2><p class="hint mt2">Apple et Spotify te donnent gratuitement un fichier de toutes tes données. SetMate le lit <b>sur ton téléphone</b> (rien n’est envoyé) et en tire tes sons les plus écoutés, puis te propose des sons du même univers.</p>
   <details class="mt" open><summary class="hint clk">Apple Music</summary><ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Sur <b>privacy.apple.com</b>, connecte-toi, « Demander une copie de vos données », coche <b>Apple Media Services</b> (il contient Apple Music).</li><li>Apple prévient par e-mail : compte 4 à 7 jours.</li><li>Télécharge le .zip, décompresse-le dans <b>Fichiers</b>. Dans le dossier « Apple Music Activity », prends le fichier <b>Play Activity</b> ou <b>Play History Daily Tracks</b> (.csv).</li></ol><p class="hint">Les noms de fichiers viennent de guides non officiels et peuvent changer : regarde dans ton dossier.</p></details>
