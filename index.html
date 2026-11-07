@@ -322,7 +322,7 @@ select.f{color-scheme:dark;-webkit-appearance:none;appearance:none;padding-right
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.10.1";
+const VERSION="1.10.2";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -2016,18 +2016,20 @@ const SC_NAME="SetMate Apple Music";
    (page officielle Serato « Serato DJ & Apple Music »), donc c'est aussi le chemin vers Serato mobile. Non testé de bout en bout sur iPhone. */
 let AMTXT="";
 const amText=items=>items.map(x=>(x.a?x.a+" - ":"")+x.t).join("\n");
+/** Le raccourci retrouve chaque son par son TITRE dans la bibliothèque Apple Music (filtre « Nom contient ») : on lui envoie les titres seuls. */
+const amTitles=items=>items.map(x=>x.t).join("\n");
 /** Texte passé directement au raccourci si la liste est courte ; sinon via le presse-papiers (limite d'une adresse). */
 function amRunUrl(txt){const e=encodeURIComponent(txt);return "shortcuts://run-shortcut?name="+encodeURIComponent(SC_NAME)+(e.length<3500?"&input=text&text="+e:"&input=clipboard");}
 async function sendToApple(id){const p=plGet(id);if(!p||!p.items.length)return;return sendListToApple(p.name,p.items);}
 function sendSetToApple(){const items=S.set.ids.map(T).filter(Boolean).map(t=>({t:t.t,a:t.a}));if(!items.length)return toast("Ton set est vide.",false,true);sendListToApple(S.set.name,items);}
-async function sendListToApple(name,items){const txt=amText(items);AMTXT=txt;let ok=false;
+async function sendListToApple(name,items){const txt=amTitles(items);AMTXT=txt;let ok=false;
   try{await navigator.clipboard.writeText(txt);ok=true;}catch(e){}
   modal(`<h2>Envoyer vers Apple Music</h2><p class="hint mt2">« ${esc(name)} » · ${pl(items.length,"son")}. ${ok?"<b style='color:var(--green)'>La liste est aussi copiée.</b>":"Copie automatique impossible : touche « Copier la liste »."}</p>
    <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" id="amGo" onclick="location.href=amRunUrl(AMTXT)">Lancer mon raccourci</button><button class="btn ghost" onclick="navigator.clipboard.writeText(AMTXT).then(()=>toast('Liste copiée.',true),()=>toast('Copie impossible.',false,true))">Copier la liste</button></div>
    <p class="hint mt2">Le bouton lance le raccourci « ${SC_NAME} » de ton iPhone avec la liste. Il n’existe pas encore : on le construit ensemble (une seule fois).</p>
    <div class="card mt" style="background:var(--panel2);padding:12px;font-size:13px"><b>Ensuite, dans Serato sur iPhone</b><br>Ouvre l’onglet <b>Apple Music</b> : la playlist <b>SetMate</b> doit apparaître dans tes playlists (Serato indique que tes playlists apparaissent toutes seules une fois le compte connecté). <span style="color:var(--orange)">Non testé de bout en bout.</span></div>
    <details class="mt"><summary class="hint clk">Recette du raccourci (non testée)</summary><div class="banner mt2"><b>Non testée.</b> Je l’ai écrite sans pouvoir l’essayer. Les actions de Raccourcis peuvent se comporter autrement. Dis-moi ce qui coince, on corrige.</div>
-   <ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Dans <b>Musique</b>, crée une playlist vide nommée <b>SetMate</b> (certains rapports disent que l’action d’ajout ne marche que sur une playlist qui existe déjà).</li><li>Dans <b>Raccourcis</b>, nouveau raccourci nommé <b>${SC_NAME}</b>.</li><li>Actions : <b>Entrée du raccourci</b> (le texte envoyé par SetMate ; si vide, <b>Obtenir le presse-papiers</b>), puis <b>Diviser le texte</b> (par nouvelles lignes), puis <b>Répéter avec chaque élément</b>.</li><li>Dans la répétition : <b>Rechercher dans l’iTunes Store</b> (ou <b>Rechercher de la musique</b>) avec l’élément répété, limite 1, puis <b>Ajouter à la playlist SetMate</b>.</li></ol></details>`);}
+   <ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Dans <b>Musique</b>, crée une playlist vide nommée <b>SetMate</b>.</li><li>Dans <b>Raccourcis</b>, nouveau raccourci nommé <b>${SC_NAME}</b>.</li><li><b>Scinder le texte</b> : <b>Entrée de raccourci</b> selon <b>Nouvelles lignes</b>.</li><li><b>Répéter avec chaque élément</b> dans le texte scindé.</li><li>Dans la répétition : <b>Filtrer</b> (Musique) avec un seul filtre <b>Nom contient Élément de répétition</b>, <b>Limite 1</b>.</li><li>Puis, toujours dans la répétition : <b>Ajouter à la playlist</b> : les morceaux trouvés, dans la playlist <b>SetMate</b>.</li></ol><p class="hint mt2">Ce raccourci ne retrouve que les sons déjà dans ta <b>bibliothèque</b> Apple Music (il cherche par titre).</p></ol></details>`);}
 
 
 /* 1.10 · Un seul bouton « Envoyer » pour le set (avant : 5 boutons). Chaque destination dit ce qui a été testé. */
