@@ -322,7 +322,7 @@ select.f{color-scheme:dark;-webkit-appearance:none;appearance:none;padding-right
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.10.2";
+const VERSION="1.10.4";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -2022,14 +2022,27 @@ const amTitles=items=>items.map(x=>x.t).join("\n");
 function amRunUrl(txt){const e=encodeURIComponent(txt);return "shortcuts://run-shortcut?name="+encodeURIComponent(SC_NAME)+(e.length<3500?"&input=text&text="+e:"&input=clipboard");}
 async function sendToApple(id){const p=plGet(id);if(!p||!p.items.length)return;return sendListToApple(p.name,p.items);}
 function sendSetToApple(){const items=S.set.ids.map(T).filter(Boolean).map(t=>({t:t.t,a:t.a}));if(!items.length)return toast("Ton set est vide.",false,true);sendListToApple(S.set.name,items);}
-async function sendListToApple(name,items){const txt=amTitles(items);AMTXT=txt;let ok=false;
-  try{await navigator.clipboard.writeText(txt);ok=true;}catch(e){}
-  modal(`<h2>Envoyer vers Apple Music</h2><p class="hint mt2">« ${esc(name)} » · ${pl(items.length,"son")}. ${ok?"<b style='color:var(--green)'>La liste est aussi copiée.</b>":"Copie automatique impossible : touche « Copier la liste »."}</p>
-   <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" id="amGo" onclick="location.href=amRunUrl(AMTXT)">Lancer mon raccourci</button><button class="btn ghost" onclick="navigator.clipboard.writeText(AMTXT).then(()=>toast('Liste copiée.',true),()=>toast('Copie impossible.',false,true))">Copier la liste</button></div>
-   <p class="hint mt2">Le bouton lance le raccourci « ${SC_NAME} » de ton iPhone avec la liste. Il n’existe pas encore : on le construit ensemble (une seule fois).</p>
-   <div class="card mt" style="background:var(--panel2);padding:12px;font-size:13px"><b>Ensuite, dans Serato sur iPhone</b><br>Ouvre l’onglet <b>Apple Music</b> : la playlist <b>SetMate</b> doit apparaître dans tes playlists (Serato indique que tes playlists apparaissent toutes seules une fois le compte connecté). <span style="color:var(--orange)">Non testé de bout en bout.</span></div>
-   <details class="mt"><summary class="hint clk">Recette du raccourci (non testée)</summary><div class="banner mt2"><b>Non testée.</b> Je l’ai écrite sans pouvoir l’essayer. Les actions de Raccourcis peuvent se comporter autrement. Dis-moi ce qui coince, on corrige.</div>
-   <ol class="mt2" style="padding-left:20px;line-height:1.7"><li>Dans <b>Musique</b>, crée une playlist vide nommée <b>SetMate</b>.</li><li>Dans <b>Raccourcis</b>, nouveau raccourci nommé <b>${SC_NAME}</b>.</li><li><b>Scinder le texte</b> : <b>Entrée de raccourci</b> selon <b>Nouvelles lignes</b>.</li><li><b>Répéter avec chaque élément</b> dans le texte scindé.</li><li>Dans la répétition : <b>Filtrer</b> (Musique) avec un seul filtre <b>Nom contient Élément de répétition</b>, <b>Limite 1</b>.</li><li>Puis, toujours dans la répétition : <b>Ajouter à la playlist</b> : les morceaux trouvés, dans la playlist <b>SetMate</b>.</li></ol><p class="hint mt2">Ce raccourci ne retrouve que les sons déjà dans ta <b>bibliothèque</b> Apple Music (il cherche par titre).</p></ol></details>`);}
+/* Plan B (mesuré le 07/11/2026 sur l'iPhone de Sabri : le raccourci trouve les sons mais « Ajouter à la playlist » n'ajoute rien, échec silencieux
+   aussi signalé par d'autres utilisateurs). SetMate retrouve chaque son dans Apple Music (recherche gratuite) ; l'ajout à la playlist se fait dans Apple Music. */
+let AMLIST=[],AMDONE=new Set(),AMSESS=0;
+let amGo=url=>{location.assign(url);};
+function amRow(i){const x=AMLIST[i],h=`<b>${esc(x.t)}</b> <span class="hint">${esc(x.a||"")}</span>`;
+  if(x.m===undefined)return `<div class="conn" id="amr${i}"><div style="flex:1;min-width:0">${h}<div class="hint">Je cherche dans Apple Music…</div></div></div>`;
+  if(x.m===null)return `<div class="conn" id="amr${i}"><div style="flex:1;min-width:0">${h}<div class="hint" style="color:var(--orange)">Introuvable dans Apple Music : ajoute-le à la main.</div></div></div>`;
+  return `<div class="conn" id="amr${i}"><div style="flex:1;min-width:0">${h}<div class="hint">${AMDONE.has(i)?"<span style='color:var(--green)'>Ouvert ✓</span>":esc((x.m.t||"")+" · "+(x.m.a||""))}</div></div><button class="btn sm ${AMDONE.has(i)?"ghost":""}" onclick="amOpen(${i})">${AMDONE.has(i)?"Rouvrir":"Ouvrir"}</button></div>`;}
+function amOpen(i){const x=AMLIST[i];if(!x||!x.m)return;AMDONE.add(i);const e=$("#amr"+i);if(e)e.outerHTML=amRow(i);amGo(x.m.url);}
+async function sendListToApple(name,items){const txt=amTitles(items);AMTXT=txt;const sess=++AMSESS;AMDONE=new Set();AMLIST=items.map(x=>({t:x.t,a:x.a,m:undefined}));
+  modal(`<h2>Envoyer vers Apple Music</h2><p class="hint mt2">« ${esc(name)} » · ${pl(items.length,"son")}. Je retrouve chaque son dans Apple Music, puis tu l’ajoutes à ta playlist.</p>
+   <ol class="mt2" style="padding-left:20px;line-height:1.7;font-size:14px"><li>Touche <b>Ouvrir</b> : Apple Music s’ouvre sur le son.</li><li>Touche <b>•••</b> puis <b>Ajouter à une playlist</b>, choisis ta playlist (par exemple <b>SetMate</b>).</li><li>Reviens dans SetMate et passe au son suivant.</li></ol>
+   <div id="amList" class="mt">${AMLIST.map((_,i)=>amRow(i)).join("")}</div>
+   <div class="card mt" style="background:var(--panel2);padding:12px;font-size:13px"><b>Ensuite, dans Serato sur iPhone</b><br>Ouvre l’onglet <b>Apple Music</b> : ta playlist doit apparaître (Serato indique que tes playlists apparaissent toutes seules une fois le compte connecté). <span style="color:var(--orange)">Non testé de bout en bout.</span></div>
+   <details class="mt"><summary class="hint clk">Raccourci iPhone (essai : il trouve les sons mais n’a rien ajouté sur ton iPhone)</summary>
+   <p class="hint mt2">Le raccourci « ${SC_NAME} » reçoit les titres, mais l’action « Ajouter à la playlist » ne les ajoute pas : d’autres utilisateurs le signalent aussi. Je le garde pour d’éventuels essais.</p>
+   <div class="row mt2" style="gap:8px;flex-wrap:wrap"><button class="btn ghost sm" onclick="location.href=amRunUrl(AMTXT)">Lancer mon raccourci</button><button class="btn ghost sm" onclick="navigator.clipboard.writeText(AMTXT).then(()=>toast('Titres copiés.',true),()=>toast('Copie impossible.',false,true))">Copier les titres</button></div></details>
+   <div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Fermer</button></div>`);
+  for(let i=0;i<AMLIST.length;i++){if(sess!==AMSESS)return;
+    try{AMLIST[i].m=await amMatch(items[i]);}catch(e){AMLIST[i].m=null;if(sess===AMSESS)toast(esc(e.message),false,true);}
+    const e=$("#amr"+i);if(e&&sess===AMSESS)e.outerHTML=amRow(i);}}
 
 
 /* 1.10 · Un seul bouton « Envoyer » pour le set (avant : 5 boutons). Chaque destination dit ce qui a été testé. */
@@ -2037,7 +2050,7 @@ function sendMenu(){const n=S.set.ids.length;if(!n)return toast("Ton set est vid
   const ok='<span style="color:var(--green)">Testé</span>',no='<span style="color:var(--orange)">Non testé</span>';
   const row=(ic,t,d,act,tag)=>`<div class="conn"><div style="flex:1;min-width:0"><b>${svg(ic,14)} ${t}</b><div class="hint">${d} · ${tag}</div></div><button class="btn sm ghost" onclick="closeModal();${act}">Choisir</button></div>`;
   modal(`<h2>Envoyer mon set</h2><p class="hint mt2">« ${esc(S.set.name)} » · ${pl(n,"son")}</p><div class="mt">
-   ${row("apple","Apple Music, puis Serato sur iPhone","Crée la playlist dans Apple Music par ton raccourci ; Serato mobile affiche tes playlists Apple Music","sendSetToApple()",no)}
+   ${row("apple","Apple Music, puis Serato sur iPhone","Ouvre chaque son dans Apple Music pour l’ajouter à ta playlist ; Serato mobile affiche tes playlists Apple Music","sendSetToApple()",no)}
    ${row("dl","Playlist M3U pour Serato (ordinateur)","À glisser dans l’onglet Files puis sur Crates ; tu choisis Windows ou Mac","exportM3Uchoose()",ok+" sur Serato 5, Windows")}
    ${row("folder","Crate Serato (écrite par SetMate)","Chrome ou Edge, Serato fermé ; apparaît quand tu relances Serato","exportSetCrate()",ok+" sur Serato 5, Windows")}
    ${row("usb","Clé USB","Copie les fichiers du set sur une clé","exportUsb()",no)}
@@ -2153,10 +2166,36 @@ function recRow(t,st){const on=t.dz&&PL&&PL.u==="t"+t.n&&!AU.paused,hasF=!t.wish
     <button class="play ${on?"on":""}" onclick="playTrack(${t.n})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>
     ${st!=="done"?`<button class="btn sm add" onclick="recMark([${t.n}],'done')" aria-label="Marquer comme récupéré" data-tip="Marquer comme récupéré">${svg("check",15)}</button>`:(t.wish?`<button class="mi" onclick="recMark([${t.n}],'todo')" aria-label="Remettre à récupérer" data-tip="Remettre à récupérer">${svg("refresh",14)}</button>`:"")}
     ${t.wish?`<button class="mi" onclick="rmWish(${t.n})" aria-label="Retirer de ma musique" data-tip="Retirer de ma musique">${svg("x",14)}</button>`:""}</div>`;}
+/* 1.10.4 · « Récupérer sur Apple Music » : tous les sons de « À récupérer » (aucun plafond côté SetMate) vont dans une playlist Apple Music en un transfert.
+   Raccourcis ne sait pas ajouter à une playlist (mesuré sur l'iPhone de Sabri, 07/11/2026) et l'accès officiel demande 99 $/an. Chemin sans compte développeur :
+   un fichier de liste que TuneMyMusic (site tiers) lit, retrouve dans le catalogue Apple Music et ajoute à une nouvelle playlist. Gratuit jusqu'à 500 sons, d'après leur FAQ du 07/11/2026.
+   NON TESTÉ : le format exact de colonnes attendu par leur site, l'usage depuis Safari sur iPhone. D'où le fichier d'essai de 5 sons. */
+const TMM_MAX=500,TMM_URL="https://www.tunemymusic.com/transfer/file-to-apple-music";
+const tmmQ=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+function tmmCsv(items,pname){return "Track name,Artist name,Album,Playlist name"+"\r\n"+items.map(x=>[tmmQ(x.t),tmmQ(x.a||""),tmmQ(""),tmmQ(pname)].join(",")).join("\r\n")+"\r\n";}
+function tmmTxt(items){return items.map(x=>(x.a?x.a+" - ":"")+x.t).join("\n")+"\n";}
+function tmmParts(items,max){const m=max||TMM_MAX,out=[];for(let i=0;i<items.length;i+=m)out.push(items.slice(i,i+m));return out;}
+let TMMITEMS=[];
+function tmmGet(part,fmt){const parts=part==="test"?[TMMITEMS.slice(0,5)]:tmmParts(TMMITEMS),it=part==="test"?parts[0]:parts[part];if(!it||!it.length)return;
+  const base=part==="test"?"SetMate - essai 5 sons":"SetMate - a recuperer"+(parts.length>1?" - partie "+(part+1)+" sur "+parts.length:"");
+  download(new Blob([fmt==="txt"?tmmTxt(it):tmmCsv(it,"SetMate")],{type:fmt==="txt"?"text/plain":"text/csv"}),base+(fmt==="txt"?".txt":".csv"));
+  toast(`${pl(it.length,"son")} dans « ${base}.${fmt} » (dossier Fichiers ou Téléchargements).`,true);}
+function recApple(){TMMITEMS=tList().map(t=>({t:t.t,a:t.a}));const n=TMMITEMS.length;if(!n)return toast("Rien dans « À récupérer ».",false,true);
+  const parts=tmmParts(TMMITEMS);
+  modal(`<h2>Récupérer sur Apple Music</h2><p class="hint mt2"><b>${pl(n,"son")}</b> dans « À récupérer », tous envoyés en une fois, sans limite de SetMate.</p>
+   <ol class="mt2" style="padding-left:20px;line-height:1.7;font-size:14px"><li>Télécharge le fichier ci-dessous.</li><li>Ouvre <b>TuneMyMusic</b>, choisis ce fichier, connecte ton Apple Music.</li><li>Il retrouve chaque son dans Apple Music et crée la playlist (ses sons introuvables sont listés dans son rapport).</li><li>Ouvre ensuite Serato sur iPhone, onglet <b>Apple Music</b> : la playlist doit apparaître.</li></ol>
+   <div class="card mt" style="background:var(--panel2);padding:12px"><b>Essai d’abord (5 sons)</b><div class="hint">Pour vérifier que le format est accepté et que la playlist arrive bien dans Apple Music.</div>
+    <div class="row mt2" style="gap:8px;flex-wrap:wrap"><button class="btn sm" onclick="tmmGet('test','csv')">Fichier d’essai CSV</button><button class="btn ghost sm" onclick="tmmGet('test','txt')">Version TXT</button></div></div>
+   <div class="card mt" style="background:var(--panel2);padding:12px"><b>${parts.length>1?`Tes ${n} sons, en ${parts.length} fichiers de ${TMM_MAX} au plus`:`Tes ${n} sons`}</b>
+    <div class="hint">${parts.length>1?`TuneMyMusic annonce une offre gratuite jusqu’à ${TMM_MAX} sons : je découpe pour rester dans cette limite. Au-delà, leur offre payante coûte environ 24 $ par an, ou un seul mois pour un transfert (vérifie le prix sur leur site).`:"Dans la limite gratuite annoncée par TuneMyMusic (500 sons)."}</div>
+    ${parts.map((it,i)=>`<div class="row mt2" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="hint" style="flex:1;min-width:120px">${parts.length>1?`Partie ${i+1} · `:""}${pl(it.length,"son")}</span><button class="btn sm" onclick="tmmGet(${i},'csv')">CSV</button><button class="btn ghost sm" onclick="tmmGet(${i},'txt')">TXT</button></div>`).join("")}</div>
+   <div class="row mt" style="gap:8px;flex-wrap:wrap"><a class="btn ghost sm" href="${TMM_URL}" target="_blank" rel="noopener noreferrer">Ouvrir TuneMyMusic</a></div>
+   <p class="hint mt2"><span style="color:var(--orange)">Non testé de bout en bout.</span> Je ne sais pas encore quel format de fichier leur site préfère : fais l’essai de 5 sons avant d’envoyer tout le reste. Ce service est tiers : il reçoit la liste des titres et se connecte à ton Apple Music.</p>
+   <div class="row mt" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Fermer</button></div>`);}
 function recView(){const q=qList(),td=tList(),dn=dList(),st=S.recTab||"queue",cur=st==="queue"?q:st==="todo"?td:dn,ug=upgrades();
   const seg=[["queue","File d’attente",q.length],["todo","À récupérer",td.length],["done","Récupérés",dn.length]].map(([k,l,n])=>`<button style="flex:1;text-align:center" class="${st===k?"on":""}" onclick="S.recTab='${k}';SELR.clear();save();softRender()">${l} <b>${n}</b></button>`).join("");
   const main=st==="queue"?`<button class="btn sm" onclick="recEmptyQueue()" ${q.length?"":"disabled"}>${svg("next2",14)}Vider la file vers « À récupérer »</button><button class="btn ghost sm" onclick="recDoneAll('queue')" ${q.length?"":"disabled"}>Tout marquer récupéré</button>`
-    :st==="todo"?`<button class="btn sm" onclick="recDoneAll('todo')" ${td.length?"":"disabled"}>${svg("check",14)}Tout marquer récupéré</button><button class="btn ghost sm" onclick="recBack('todo')" ${td.length?"":"disabled"}>Tout remettre en file</button>`
+    :st==="todo"?`<button class="btn" id="recAppleBtn" onclick="recApple()" ${td.length?"":"disabled"}>${svg("apple",14)}Récupérer sur Apple Music</button><button class="btn ghost sm" onclick="recDoneAll('todo')" ${td.length?"":"disabled"}>${svg("check",14)}Tout marquer récupéré</button><button class="btn ghost sm" onclick="recBack('todo')" ${td.length?"":"disabled"}>Tout remettre en file</button>`
     :`<button class="btn ghost sm" onclick="recBack('done')" ${dn.some(t=>t.wish)?"":"disabled"}>Remettre à récupérer les sons sans fichier</button>`;
   const selbar=SELM?`<span class="hint" style="align-self:center">${SELR.size} coché${SELR.size>1?"s":""}</span><button class="chip" onclick="recSelAll('${st}')">Tout cocher</button>
      ${st!=="done"?`<button class="btn sm" onclick="recSelDo('done')">${svg("check",14)}Récupéré</button>`:""}${st==="queue"?`<button class="btn ghost sm" onclick="recSelDo('todo')">→ À récupérer</button>`:""}${st==="todo"?`<button class="btn ghost sm" onclick="recSelDo('queue')">← File</button>`:""}
