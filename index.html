@@ -292,17 +292,58 @@ select.f{color-scheme:dark;-webkit-appearance:none;appearance:none;padding-right
   .subnav{padding-top:8px}
 }
 /* 1.11 · refonte iPhone : moins d'éléments éparpillés, une action principale bien visible par écran */
-.bds,.addl{display:none}
+.addl,.sbs,.ttl,.gearb{display:none}
+.backb{all:unset;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 6px;color:var(--blue);font-weight:700;font-size:15px}
+.card2{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line2);border-radius:18px;padding:18px;margin-top:14px}
+.c2t{font-size:24px;font-weight:800;margin:8px 0 2px;letter-spacing:-.01em}
+.prog{height:8px;border-radius:5px;background:var(--panel3);overflow:hidden;margin:14px 0 6px}.prog i{display:block;height:100%;background:var(--blue);border-radius:5px}
+.cta{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;border-radius:16px;background:var(--blue);color:#00203a;font-weight:800;font-size:17px;text-align:center;-webkit-tap-highlight-color:transparent}
+.cta.sec{background:var(--panel3);color:var(--txt);min-height:48px;font-size:15px;font-weight:700}
+.cta[disabled],.cta.off{background:var(--panel3);color:var(--muted);cursor:default}
+.tiles2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.tile2{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:16px;background:var(--panel2);border:1px solid var(--line);min-height:112px}
+.tile2 b{font-size:16px}.tile2 span:last-child{font-size:13px;color:var(--muted)}.ti2{color:var(--txt);margin-bottom:6px}
+.lrow{all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:center;width:100%;min-height:52px;padding:0 6px;margin-top:6px;font-size:15px;color:var(--muted);border-bottom:1px solid var(--line)}
+.lrow.or{color:var(--orange);font-weight:700}
+.sect{margin:26px 0 8px;font-size:15px;color:var(--muted);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.gcard{display:block;background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:10px;cursor:pointer}
+.gct{display:block;font-size:19px;margin:8px 0 2px}.gst{margin-top:10px;color:var(--blue);font-weight:700;font-size:14px}
+.gcard.slim{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:72px}
+.pillo{all:unset;cursor:pointer;background:rgba(255,138,31,.16);color:var(--orange);border:1px solid #5a3a14;border-radius:20px;padding:10px 14px;font-weight:700;font-size:13px;min-height:20px;white-space:nowrap}
+.lnk2{all:unset;cursor:pointer;display:block;margin:22px auto 6px;color:var(--blue);font-weight:700;font-size:14px;padding:12px;text-align:center}
+.lnk2.sm{display:inline-block;margin:0;padding:8px 4px}
+.nol{display:none}#pickQ{margin-bottom:12px}.filtb{display:none}.filtbox{display:contents}
+.banner.slim{padding:6px 14px;font-size:13px;gap:10px;background:#1d1d24;border-color:var(--line);color:#ffb36b;min-height:36px}
+.banner.slim.blue{color:#cfe6ff}
+.banner .lnk{all:unset;cursor:pointer;color:var(--blue);font-weight:700;font-size:13px;padding:8px 6px;white-space:nowrap}
+.banner .x{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;font-size:20px;color:var(--muted)}
+.banner.warnl{border-left:4px solid var(--orange)}
+.aide{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:60;background:#1b2a3a;border:1px solid #2c4a68;color:#dcecff;border-radius:14px;padding:12px 14px;font-size:14px;box-shadow:0 8px 28px rgba(0,0,0,.5);max-width:520px;margin:0 auto;animation:fade .25s var(--ease)}
+.essai{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.1em;color:#111;background:var(--orange);border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:middle}
+@media (min-width:761px){.aide{bottom:24px}}
 @media (max-width:760px){
-  .topbar{padding:8px 12px;gap:8px}
-  .topbar .search{flex:none;padding:8px 14px}.topbar .search::after{content:"Chercher";font-size:13px}
-  .row.between>div[style*="position:relative"]{flex:1 1 100%!important;max-width:none!important}
-  .pill.demodup{display:none}                 /* le bandeau dit déjà « Mode démo » */
+  .topbar{padding:8px 12px;gap:8px;padding-top:calc(8px + env(safe-area-inset-top))}
+  .topbar .ttl{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:19px;font-weight:800;letter-spacing:-.01em;white-space:nowrap}
+  .topbar .search{display:none}
+  .gearb{display:grid}.ib{width:42px;height:42px;border-radius:12px}
+  .pill.demodup,#connPill{display:none}
+  #soirBtn{flex:none;padding:0 14px;height:42px;border-radius:22px;font-size:14px;font-weight:700;background:rgba(255,59,78,.12);border-color:#5a2630}
+  #soirBtn .sbl{display:none}#soirBtn .sbs{display:inline}
   #undoBtn:disabled{display:none}             /* un bouton grisé sans explication ne sert à rien */
   .banner{padding:6px 12px;font-size:12px;gap:8px}
-  .banner .bdm{display:none}.banner .bds{display:inline}
+  .nb[aria-label="Réglages"]{display:none}
+  .nb{font-size:12px}.nb .ls{font-weight:700}
+  .backb{all:unset;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 6px;color:var(--blue);font-weight:700;font-size:16px}
+  .scrT{display:none}
+  .libbar{flex-wrap:wrap}.libbar #libQ{max-width:none!important;flex:1 1 60%;height:48px}
+  .filtb{display:inline-flex;align-items:center;min-height:48px}
+  .filtbox{display:none;flex:1 1 100%;flex-wrap:wrap;gap:8px}.filtbox.open{display:flex}
+  .tbl th{font-size:11px}
+  .sg .mi .nol{display:inline;font-size:13px;margin-left:6px}.sg .mi{width:auto;padding:0 10px;min-height:44px;display:inline-flex;align-items:center}
+  .sg .play{min-width:44px;min-height:44px}
+  .row.between>div[style*="position:relative"]{flex:1 1 100%!important;max-width:none!important}
   .subnav{gap:6px;padding:10px 0 10px}
-  .sn{padding:8px 12px;font-size:13px;min-height:36px}
+  .sn{padding:8px 12px;font-size:13px;min-height:44px}
   #main h1{font-size:26px}
   .sg{flex-wrap:wrap;row-gap:10px;padding:12px}
   .sg .sgm{flex:1 1 100%;order:1}
@@ -320,12 +361,14 @@ select.f{color-scheme:dark;-webkit-appearance:none;appearance:none;padding-right
   <nav id="nav"></nav>
   <div class="col">
     <div class="topbar">
+      <div class="ttl" id="topTtl"></div>
       <button class="search" onclick="openPalette()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Chercher un son, une soirée, une action…</span><span class="kbd" id="kbdHint">Ctrl K</span></button>
       <div class="tsp"></div>
-      <button class="pill" id="soirBtn" onclick="soirStart()" aria-label="Mode soirée"><i></i>Mode soirée</button>
+      <button class="pill" id="soirBtn" onclick="soirStart()" aria-label="Mode soirée"><i></i><span class="sbl">Mode soirée</span><span class="sbs">▶ Soirée</span></button>
       <button class="pill" id="connPill" onclick="go('settings')"></button>
       <button class="ib" id="undoBtn" onclick="doUndo()" aria-label="Annuler" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
       <button class="ib" id="bellBtn" onclick="toggleNotif()" aria-label="Notifications"></button>
+      <button class="ib gearb" id="gearBtn" onclick="go('settings')" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></button>
     </div>
     <div id="banner"></div>
     <main id="main"></main>
@@ -344,7 +387,7 @@ select.f{color-scheme:dark;-webkit-appearance:none;appearance:none;padding-right
    SETMATE · assistant DJ pour Serato
    Tout reste dans ce navigateur (IndexedDB) et dans les dossiers que tu autorises.
    ===================================================================== */
-const VERSION="1.11.0";
+const VERSION="1.12.0";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>" "+String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim()+" ";
@@ -606,13 +649,18 @@ function pendingDeb(){return pastGigs().filter(g=>!g.deb&&g.type!=="Live / conte
    Les sous-sections d'un raccourci sont de petites pastilles en haut de l'écran. */
 const GROUPS=[
   {k:"home",l:"Accueil",ico:"home",subs:[["home","Accueil"]]},
-  {k:"musique",l:"Musique",ico:"lib",subs:[["lib","Ma bibliothèque"],["listen","Écouter"]]},
-  {k:"soiree",l:"Soirée",ico:"gigs",subs:[["next","Préparer un set"],["gigs","Mes soirées"],["debrief","Débrief vocal"]]},
-  {k:"decouvrir",l:"Découvrir",ico:"trend",subs:[["trend","Tendances"]]},
+  {k:"musique",l:"Ma musique",ico:"lib",subs:[["lib","Ma bibliothèque"],["listen","Mes playlists"]]},
+  {k:"soiree",l:"Mes soirées",ico:"gigs",first:"gigs",subs:[["gigs","Mes soirées"],["next","Mon set"],["debrief","Raconter ma soirée"]]},
+  {k:"decouvrir",l:"Trouver du son",ico:"trend",subs:[["trend","Trouver du son"]]},
   {k:"reglages",l:"Réglages",ico:"settings",subs:[["settings","Réglages"]]}];
 const groupOf=sc=>GROUPS.find(g=>g.subs.some(x=>x[0]===sc))||GROUPS[0];
 const grpLast={};
-function goGroup(k){const g=GROUPS.find(x=>x.k===k)||GROUPS[0],l=grpLast[k];go(g.subs.some(x=>x[0]===l)?l:g.subs[0][0]);}
+function goGroup(k){const g=GROUPS.find(x=>x.k===k)||GROUPS[0],l=grpLast[k];if(g.first)return go(g.first);go(g.subs.some(x=>x[0]===l)?l:g.subs[0][0]);}
+/* 1.12 : titre unique de chaque écran (affiché dans la barre du haut sur téléphone) */
+const TITLES={home:"Accueil",lib:"Ma musique",listen:"Mes playlists",gigs:"Mes soirées",next:"Mon set",debrief:"Mon bilan",trend:"Trouver du son",settings:"Réglages"};
+const BANOFF={};   // bandeaux fermés pendant cette session
+let AIDE=null,aideT=0;
+function backBar(){return S.screen==="next"||S.screen==="debrief"?`<button class="backb" onclick="go('gigs')" aria-label="Retour à Mes soirées">‹ Mes soirées</button>`:"";}
 function subBadge(sc){const v=valQueue().length,miss=wishes().length+upgrades().length,pd=pendingDeb().length;
   if(sc==="lib"&&v)return `<span class="bdg" data-tip="${v} à vérifier">${v}</span>`;
   if(sc==="trend"&&miss)return `<span class="bdg blue" data-tip="${miss} à récupérer">${miss}</span>`;
@@ -626,29 +674,37 @@ function renderNav(){
    `<div class="navsp"></div><button class="nb ${cur.k==="reglages"?"on":""}" onclick="goGroup('reglages')" aria-label="Réglages" ${cur.k==="reglages"?'aria-current="page"':""}>${svg("settings")}<span class="ll">Réglages</span><span class="ls">Réglages</span></button>
    <div class="navfoot">${S.demo?"<b style='color:var(--orange)'>Mode démo</b><br>":""}${dot("serato")}Serato<br>${dot("music")}Musique<br>${dot("dl")}Téléchargements<br>${visible().length} sons</div>`;
 }
-function subNav(){const g=groupOf(S.screen);if(g.subs.length<2)return "";
+function subNav(){const g=groupOf(S.screen);if(g.subs.length<2||g.first)return "";
   return `<div class="subnav" role="tablist" aria-label="${g.l}">${g.subs.map(x=>`<button class="sn ${S.screen===x[0]?"on":""}" role="tab" aria-selected="${S.screen===x[0]}" onclick="go('${x[0]}')">${x[1]}${subBadge(x[0])}</button>`).join("")}</div>`;}
 function go(s){S.screen=s;grpLast[groupOf(s).k]=s;closeNotif();render();$("#main").scrollTop=0;}
 const VIEWS={};
-function render(){renderNav();renderTop();renderBanner();$("#main").innerHTML=`${subNav()}<div class="screen">${VIEWS[S.screen]()}</div>`;if(S.screen==="lib")libTable();if(S.screen==="listen")listenAfter();renderPlayer();}
+function render(){AIDE=null;renderNav();renderTop();renderBanner();$("#main").innerHTML=`${subNav()}${backBar()}<div class="screen">${VIEWS[S.screen]()}</div>`;if(S.screen==="lib")libTable();if(S.screen==="listen")listenAfter();renderPlayer();showAide();}
+/* 1.12 : une seule petite aide à la fois, en bas de l'écran, qui s'efface toute seule (plus de cadre « Compris » à fermer) */
+function showAide(){const o=document.getElementById("aide");if(o)o.remove();clearTimeout(aideT);if(!AIDE)return;const a=AIDE;
+  const d=document.createElement("div");d.id="aide";d.className="aide";d.setAttribute("role","status");d.textContent=a.t;document.body.appendChild(d);
+  const fin=()=>{const e=document.getElementById("aide");if(e)e.remove();S.tips[a.id]=1;save();};
+  aideT=setTimeout(fin,8000);d.addEventListener("click",()=>{clearTimeout(aideT);fin();});}
 /* 1.10.5 : si l'utilisateur est en train de taper, on remet le curseur dans le même champ (même id) après la reconstruction de l'écran */
 function softRender(){const m=$("#main"),st=m.scrollTop,ws=window.scrollY,a=document.activeElement,id=a&&a.id,typing=!!(id&&m.contains(a)&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")),ss=typing?a.selectionStart:null,se=typing?a.selectionEnd:null;
   render();m.scrollTop=st;window.scrollTo(0,ws);
   if(typing){const n=document.getElementById(id);if(n&&n!==a){try{n.focus({preventScroll:true});if(ss!=null)n.setSelectionRange(ss,se);}catch(e){}}}}
 /** Astuce d’une ligne, affichée une seule fois par écran. */
-function tip(id,html){return S.tips[id]?"":`<div class="tipbox"><span><b>Astuce</b> · ${html}</span><button class="btn sm ghost" onclick="S.tips['${id}']=1;save();softRender()">Compris</button></div>`;}
+function tip(id,html){if(!S.tips[id]&&!AIDE)AIDE={id,t:String(html).replace(/<[^>]*>/g,"")};return "";}
 function renderTop(){
   const p=$("#connPill");const ok=H.serato&&PERM.serato==="granted";
   p.className="pill "+(S.demo?"warn demodup":ok?"ok":"warn");p.innerHTML=`<i></i>${S.demo?"Mode démo":ok?"Serato connecté":H.serato?"Serato à reconnecter":"Serato non connecté"}`;
+  const tt=$("#topTtl");if(tt)tt.innerHTML=esc(TITLES[S.screen]||"");
   const n=S.notifs.filter(x=>!x.seen).length;
   $("#bellBtn").innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 004 0"/></svg>${n?`<span class="n">${n}</span>`:""}`;updUndo();
 }
 function renderBanner(){
   const b=$("#banner");const need=["serato","music","dl"].filter(k=>H[k]&&PERM[k]!=="granted");
-  if(S.demo)b.innerHTML=`<div class="banner"><span class="bdm">Mode démo : sons d’exemple. Rien n’est écrit dans Serato.</span><span class="bds">Mode démo · sons d’exemple</span> <span class="tsp"></span><button class="btn sm orange" onclick="leaveDemo()">${MOBILE&&!FSA?"Quitter la démo":"Connecter ma vraie bibliothèque"}</button></div>`;
-  else if(need.length)b.innerHTML=`<div class="banner blue">Ton navigateur demande de reconfirmer l’accès à : ${need.map(k=>({serato:"Serato",music:"Musique",dl:"Téléchargements"})[k]).join(", ")}. <span class="tsp"></span><button class="btn sm" onclick="reconnect()">Reconnecter</button></div>`;
-  else if(!FSA&&MOBILE)b.innerHTML=`<div class="banner blue">Sur téléphone : tendances, écoute, débrief vocal et soirées. Le rangement et Serato se font sur le Mac, avec Chrome.</div>`;
-  else if(!FSA)b.innerHTML=`<div class="banner">Ce navigateur ne permet pas d’écrire dans tes dossiers. Ouvre SetMate dans <b>Chrome</b> ou <b>Edge</b> pour créer les crates et copier sur clé. Ici : lecture et téléchargement des crates.</div>`;
+  const fermer=k=>`<button class="x" aria-label="Fermer" onclick="BANOFF['${k}']=1;renderBanner();renderTop()">×</button>`;
+  /* 1.12 : un seul bandeau à la fois, en une ligne fine ; le gros bouton orange a disparu */
+  if(S.demo){if(!BANOFF.demo&&["home","lib","settings"].includes(S.screen))b.innerHTML=`<div class="banner slim"><span>Essai : sons d’exemple</span><span class="tsp"></span><button class="lnk" onclick="leaveDemo()">${MOBILE&&!FSA?"Quitter l’essai":"Utiliser ma musique"}</button>${fermer("demo")}</div>`;else b.innerHTML="";}
+  else if(need.length)b.innerHTML=`<div class="banner warnl">Autorise l’accès à : ${need.map(k=>({serato:"Serato",music:"Musique",dl:"Téléchargements"})[k]).join(", ")}. <span class="tsp"></span><button class="btn sm" onclick="reconnect()">Autoriser</button></div>`;
+  else if(!FSA&&MOBILE){b.innerHTML=BANOFF.mob?"":`<div class="banner slim blue"><span>Sur iPhone : écoute, nouveautés, bilan. Ta bibliothèque Serato se range sur ordinateur.</span>${fermer("mob")}</div>`;}
+  else if(!FSA){b.innerHTML=BANOFF.fsa?"":`<div class="banner slim"><span>Pour ranger tes sons et créer les crates, ouvre SetMate dans <b>Chrome</b> ou <b>Edge</b>.</span>${fermer("fsa")}</div>`;}
   else b.innerHTML="";
 }
 async function reconnect(){for(const k of ["serato","music","dl"])if(H[k]&&PERM[k]!=="granted")await ensurePerm(k,modeOf(k));
@@ -782,11 +838,11 @@ function gigCheck(g){const w=Date.now()-S.trends.date<7*864e5,mine=S.set.gig===g
 function linkSet(id){if(S.set.gig!==id){const g=S.gigs.find(x=>x.id===id);if(S.set.ids.length<=1||confirmSwitch()){S.set.gig=id;S.set.name=(g.theme||g.type)+" · "+g.lieu;save();}}go("next");}
 function confirmSwitch(){return true;}
 function welcome(){
-  if(MOBILE&&!FSA)return `<div style="max-width:520px;margin:10px auto;text-align:center"><div class="disc" style="width:76px;height:76px;margin:0 auto 16px"></div><h1 style="font-size:28px">Bienvenue dans SetMate</h1>
-  <p class="sub" style="font-size:15px">Ton assistant DJ. Sur le téléphone : tendances du moment, extraits à écouter, débrief vocal après la soirée, tes dates.</p>
-  <div class="card" style="text-align:left"><h3>Essayer tout de suite</h3><p class="hint mt2">Le mode démo charge des sons d’exemple. Les tendances et le débrief vocal fonctionnent pour de vrai.</p><button class="btn block mt" onclick="enterDemo();render()">Essayer en mode démo</button></div>
-  <div class="card mt" style="text-align:left"><h3>Les tendances, sans rien installer</h3><p class="hint mt2">Les sons qui montent cette semaine en France, avec extraits.</p><button class="btn ghost block mt" onclick="go('trend');refreshTrends()">Voir les tendances</button></div>
-  <div class="card mt" style="text-align:left"><h3>Ta vraie bibliothèque</h3><p class="hint mt2">Ouvre ce même lien sur ton Mac avec Chrome, puis connecte ton dossier <code>_Serato_</code>.</p></div></div>`;
+  if(MOBILE&&!FSA)return `<div style="max-width:520px;margin:10px auto;text-align:center"><div class="disc" style="width:76px;height:76px;margin:0 auto 16px"></div><h1 style="font-size:28px">Bienvenue sur SetMate</h1>
+  <p class="sub" style="font-size:16px">Ton assistant DJ : je te dis quel son mettre après celui-ci.</p>
+  <div class="card2" style="text-align:left"><b style="font-size:17px">Commence par un essai</b><p class="hint" style="margin:6px 0 14px">Je charge quelques sons d’exemple. Tu peux tout toucher, rien n’est écrit dans Serato.</p><button class="cta" onclick="enterDemo();render()">Essayer avec des sons d’exemple</button></div>
+  <div class="card2" style="text-align:left"><b style="font-size:17px">Voir ce qui se passe en ce moment</b><p class="hint" style="margin:6px 0 14px">Les sons qui montent cette semaine en France, avec un extrait à écouter.</p><button class="cta sec" onclick="go('trend');refreshTrends()">Trouver du son</button></div>
+  <p class="hint" style="margin-top:18px">Pour ranger ta vraie bibliothèque Serato, ouvre ce même lien sur ton ordinateur avec Chrome.</p></div>`;
   return `<div style="max-width:720px;margin:20px auto;text-align:center"><div class="disc" style="width:76px;height:76px;margin:0 auto 16px"></div><h1 style="font-size:30px">Bienvenue dans SetMate</h1>
   <p class="sub" style="font-size:15px">Range ta musique, trouve le son suivant, suis les tendances, apprends de chaque soirée. Tout reste sur ton ordinateur.</p>
   <div class="card" style="text-align:left"><h3>1 · Connecte ta bibliothèque Serato</h3><p class="hint mt2">Choisis le dossier <code>_Serato_</code> dans ton dossier Musique. Je lis tes sons, BPM et tonalités déjà analysés. Je ne modifie rien sans ton accord.</p>
@@ -812,20 +868,20 @@ function libRows(){const words=normSearch(S.libQ).trim().split(" ").filter(Boole
   const [k,d]=S.sort;r.sort((a,b)=>{let A=a[k],B=b[k];if(k==="k"){A=a.k?kn(a.k)*2+(kl(a.k)==="B"):99;B=b.k?kn(b.k)*2+(kl(b.k)==="B"):99;}if(A==null)A=d>0?"￿":"";if(B==null)B=d>0?"￿":"";if(typeof A==="string")return FRC.compare(A,B)*d;return (A-B)*d;});
   return r;}
 VIEWS.lib=()=>{if(!S.tracks.length)return welcome();const vq=valQueue().length,wq=wishes().length;const gs=["Tous",...new Set(visible().map(x=>x.g))];
-  return `<div class="row between"><div><h1>Ma bibliothèque</h1><p class="sub">${pl(visible().length-wq,"son")}${wq?` + ${wq} à récupérer`:""} · touche un son pour le voir en détail.</p>${S.seratoVer==="4"||S.seratoVer==="5"?`<p class="hint" style="color:var(--orange);margin-top:-12px;margin-bottom:14px">Tu es en ${esc(SV_LABEL[S.seratoVer])} : cette liste vient de ton ancienne base Serato 3. Les sons ajoutés depuis peuvent manquer.</p>`:""}</div>
+  return `<div class="row between"><div><h1 class="scrT">Ma bibliothèque</h1><p class="sub">${pl(visible().length-wq,"son")}${wq?` + ${wq} à récupérer`:""} · touche un son pour le détail.</p>${S.seratoVer==="4"||S.seratoVer==="5"?`<p class="hint" style="color:var(--orange);margin-top:-12px;margin-bottom:14px">Tu es en ${esc(SV_LABEL[S.seratoVer])} : cette liste vient de ton ancienne base Serato 3. Les sons ajoutés depuis peuvent manquer.</p>`:""}</div>
     <div class="row">${H.music&&PERM.music==="granted"?`<button class="btn ghost sm" onclick="analyzeMissing()">${svg("refresh",14)}Analyser l’énergie</button>`:""}
-    <div class="seg"><button class="${S.libView==="all"?"on":""}" onclick="S.libView='all';S.sel=null;render()">Tous</button><button class="${S.libView==="check"?"on":""}" onclick="S.libView='check';S.sel=null;render()">À vérifier (${vq})</button><button class="${S.libView==="wish"?"on":""}" onclick="S.libView='wish';S.sel=null;render()">À récupérer (${wq})</button></div></div></div>
-  <div class="row" style="margin-bottom:12px"><input class="f" id="libQ" placeholder="Titre, artiste, style…" value="${esc(S.libQ)}" oninput="S.libQ=this.value;S.libLimit=200;libTable()" style="flex:1;min-width:180px;max-width:300px">
+    <div class="seg"><button class="${S.libView==="all"?"on":""}" onclick="S.libView='all';S.sel=null;render()">Tous</button><button class="${S.libView==="check"?"on":""}" onclick="S.libView='check';S.sel=null;render()">À contrôler (${vq})</button><button class="${S.libView==="wish"?"on":""}" onclick="S.libView='wish';S.sel=null;render()">À récupérer (${wq})</button></div></div></div>
+  <div class="row libbar" style="margin-bottom:12px"><input class="f" id="libQ" placeholder="Cherche un titre ou un artiste" value="${esc(S.libQ)}" oninput="S.libQ=this.value;S.libLimit=200;libTable()" style="flex:1;min-width:180px;max-width:300px"><button class="chip filtb ${S.libFilt||S.libG!=="Tous"||S.libB!=="all"?"on":""}" onclick="S.libFilt=!S.libFilt;render()">Filtres${S.libG!=="Tous"||S.libB!=="all"?" ●":""}</button><div class="filtbox ${S.libFilt?"open":""}">
     ${gs.slice(0,8).map(g=>`<button class="chip ${S.libG===g?"on":""}" data-g="${esc(g)}" onclick="S.libG=this.dataset.g;render()">${esc(g==="?"?"Non classé":g)}</button>`).join("")}
-    <select class="f" onchange="S.libB=this.value;libTable()">${[["all","Tous les BPM"],["a","< 95"],["b","95 à 107"],["c","108 à 119"],["d","120 +"],["none","Sans BPM"]].map(([v,l])=>`<option value="${v}" ${S.libB===v?"selected":""}>${l}</option>`).join("")}</select></div>
+    <select class="f" onchange="S.libB=this.value;libTable()">${[["all","Tous les BPM"],["a","< 95"],["b","95 à 107"],["c","108 à 119"],["d","120 +"],["none","Sans BPM"]].map(([v,l])=>`<option value="${v}" ${S.libB===v?"selected":""}>${l}</option>`).join("")}</select></div></div>
   <div class="grid g-lib"><div class="card" style="padding:0"><div class="tw" id="libT"></div></div><div id="libSide">${libSide()}</div></div>`;};
 function libTable(){if(!$("#libT"))return;const r=libRows(),[k,d]=S.sort,ar=c=>k===c?(d>0?" ↑":" ↓"):"";const th=(c,l,cls="")=>`<th class="s ${cls}" onclick="sortBy('${c}')">${l}${ar(c)}</th>`;
   const rows=r.slice(0,S.libLimit);
-  $("#libT").innerHTML=r.length?`<table class="tbl"><thead><tr>${th("t","Titre")}${th("bpm","BPM")}${th("k","Ton.")}${th("g","Genre","hm")}${th("e","Énergie","hm")}${th("era","Époque","hm")}<th></th></tr></thead><tbody>${rows.map(x=>{
-    const iss=x.wish?`<span class="tag info">À récupérer</span>`:[x.conf<75?`<span class="tag warn">Genre ?</span>`:"",x.dupOf?`<span class="tag bad">Doublon</span>`:"",x.kbps&&x.kbps<192?`<span class="tag bad">${Math.round(x.kbps)} kbps</span>`:"",x.missing?`<span class="tag bad">Introuvable</span>`:"",!x.inSerato?`<span class="tag info">Hors Serato</span>`:""].join(" ");
+  $("#libT").innerHTML=r.length?`<table class="tbl"><thead><tr>${th("t","Titre")}${th("bpm","Tempo")}${th("k","Tonalité")}${th("g","Genre","hm")}${th("e","Énergie","hm")}${th("era","Époque","hm")}<th></th></tr></thead><tbody>${rows.map(x=>{
+    const iss=x.wish?`<span class="tag info">À récupérer</span>`:[x.conf<75?`<span class="tag warn">Genre à confirmer</span>`:"",x.dupOf?`<span class="tag bad">En double</span>`:"",x.kbps&&x.kbps<192?`<span class="tag bad">Qualité basse</span>`:"",x.missing?`<span class="tag bad">Fichier perdu</span>`:"",!x.inSerato?`<span class="tag info">Pas dans Serato</span>`:""].join(" ");
     const cc=x.conf>=85?"var(--green)":x.conf>=75?"var(--blue)":"var(--orange)";
     return `<tr class="r ${S.sel===x.n?"sel":""}" onclick="selTrack(${x.n})"><td><div class="tt">${cover(x)}<div style="min-width:0"><b>${esc(x.t)}</b><small>${esc(x.a)}</small></div></div></td><td>${x.bpm?Math.round(x.bpm)+(x.bpmSrc==="est"?"<span class=hint>*</span>":""):'<span class="hint">?</span>'}</td><td>${keyTag(x.k,x.kSrc==="est")}</td><td class="hm">${esc(x.g==="?"?"Non classé":x.g)} <span class="hint">› ${esc(x.sg)}</span><span class="conf" style="background:${cc}" data-tip="Confiance ${x.conf} %"></span></td><td class="hm">${nrg(x.e)}</td><td class="hm">${esc(x.era)}</td><td><div class="row" style="gap:5px;flex-wrap:nowrap">${iss}<button class="play ${isPlaying(x)?"on":""}" onclick="event.stopPropagation();playTrack(${x.n})" aria-label="Écouter">${svg(isPlaying(x)?"pause":"play",12)}</button></div></td></tr>`}).join("")}</tbody></table>${r.length>S.libLimit?`<div style="padding:12px;text-align:center"><button class="btn ghost sm" onclick="S.libLimit+=300;libTable()">Afficher plus (${r.length-S.libLimit} restants)</button></div>`:""}`
-   :`<div class="empty">${svg(S.libView==="check"?"check":"lib",40)}<div>${S.libView==="check"?"Tout est vérifié.":S.libView==="wish"?"Rien à récupérer. Ajoute des sons depuis Tendances avec le +.":"Aucun son ne correspond."}</div></div>`;}
+   :`<div class="empty">${svg(S.libView==="check"?"check":"lib",40)}<div>${S.libView==="check"?"Tout est en ordre.":S.libView==="wish"?"Rien à récupérer. Ajoute des sons depuis « Trouver du son » avec le +.":"Aucun son ne correspond."}</div></div>`;}
 function sortBy(c){S.sort=[c,S.sort[0]===c?-S.sort[1]:1];libTable();}
 function selTrack(n){S.sel=S.sel===n?null:n;libTable();$("#libSide").innerHTML=libSide();}
 const GOPTS=[["Afro","Afrobeats"],["Afro","Amapiano"],["Afro","Afro house"],["Afro","Afropop"],["Afro","Dancehall"],["Afro","Shatta"],["Afro","Kompa"],["Afro","Zouk"],["Hip-hop","Rap FR"],["Hip-hop","Rap US"],["Hip-hop","Drill"],["Hip-hop","Trap"],["R&B","R&B"],["Open format","Hits"],["Open format","Classiques"],["Open format","House / Dance"],["Open format","Latino"]];
@@ -881,7 +937,7 @@ async function analyzeMissing(){
 function pitch(a,b){let best=[[b,""],[b*2,"double"],[b/2,"moitié"]].map(([v,m])=>({v,m,d:Math.abs(v-a)})).sort((x,y)=>x.d-y.d)[0];
   if(best.m&&Math.abs(best.v-a)/a*100>8)best={v:b,m:""};   // double / moitié seulement si ça se mixe vraiment
   const pct=(best.v-a)/a*100,ap=Math.abs(pct),s=ap<=2?1:ap>=8?0:1-(ap-2)/6,diff=Math.round(b-a);
-  return {s,pct,m:best.m,lab:best.m?`BPM ${best.m} (${Math.round(b)})`:(diff===0?"Même BPM":`${diff>0?"+":""}${diff} BPM`)};}
+  return {s,pct,m:best.m,lab:best.m?`BPM ${best.m} (${Math.round(b)})`:(diff===0?"Même tempo":`${diff>0?"+":""}${diff} BPM`)};}
 function keyS(a,b){if(!a||!b)return [.5,"Tonalité inconnue"];const d=(kn(b)-kn(a)+12)%12;
   if(a===b)return [1,"Même tonalité"];if(kn(a)===kn(b))return [.85,"Tonalité relative"];if((d===1||d===11)&&kl(a)===kl(b))return [.9,"Tonalité voisine"];
   if(d===2&&kl(a)===kl(b))return [.6,"+2 · boost d’énergie"];if(d===7&&kl(a)===kl(b))return [.5,"+7 · changement marqué"];return [.15,"Tonalité éloignée"];}
@@ -938,7 +994,7 @@ function suggestions(){const cur=T(S.cur);if(!cur)return [];
   markShown(out,cur.n+"|"+S.set.ids.join(","),o=>"t"+o.c.n,o=>o.c.t);
   return out;}
 const scol=s=>s>=.75?"var(--green)":s>=.5?"var(--orange)":"var(--red)";
-const verdict=s=>s>=.85?["Parfait","ok"]:s>=.7?["Très bien","ok"]:s>=.5?["Possible","warn"]:["Risqué","bad"];
+const verdict=s=>s>=.85?["Va très bien après","ok"]:s>=.7?["Va bien après","ok"]:s>=.5?["À essayer","warn"]:["Attention","bad"];
 const ALLKEYS=[];for(let n=1;n<=12;n++)for(const L of ["A","B"])ALLKEYS.push(n+L);
 function coverage(){const cnt={};visible().forEach(x=>{if(x.k)cnt[x.k]=(cnt[x.k]||0)+1;});return {cnt,n:ALLKEYS.filter(k=>cnt[k]).length,empty:ALLKEYS.filter(k=>!cnt[k])};}
 function onlinePool(){const seen=new Set(),out=[];
@@ -951,8 +1007,8 @@ function discoverSugg(){const cur=T(S.cur);if(!cur)return [];
 const jsq=s=>esc(String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'"));
 function sugRow({c,s,why}){const [w,cl]=verdict(s);const main=[why[0][1],why[1][1],...why.filter(x=>x[0]==="learn").map(x=>x[1])].slice(0,3).join(" · ");const open=S.openWhy===c.n;
   return `<div class="sg"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}
-    <div class="sgm" onclick="S.openWhy=${open?"null":c.n};softRender()"><div class="sgt"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span></div>${c.wish?'<span class="tag info">à récupérer</span> ':""}<div class="hint sgw">${esc(main)} · <u>${open?"moins":"pourquoi ?"}</u></div>${open?`<div class="why">${why.map(([t,l])=>`<span class="tag ${t}">${esc(l)}</span>`).join("")}</div>`:""}</div>
-    <button class="play" onclick="playTrack(${c.n})" aria-label="Écouter">${svg(isPlaying(c)?"pause":"play",12)}</button>${flag("reco2")?`<button class="mi" onclick="dismissSugg('t${c.n}','${jsq(c.t)}')" aria-label="Pas pour ce set" title="Pas pour ce set">${svg("x",14)}</button>`:""}<button class="btn sm add" onclick="addSet(${c.n})" aria-label="Ajouter au set">${svg("plus",15)}<span class="addl">Ajouter</span></button></div>`;}
+    <div class="sgm" onclick="S.openWhy=${open?"null":c.n};softRender()"><div class="sgt"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span></div>${c.wish?'<span class="tag info">à récupérer</span> ':""}<div class="hint sgw">${esc(main)} · <u>${open?"moins":"En savoir plus"}</u></div>${open?`<div class="why">${why.map(([t,l])=>`<span class="tag ${t}">${esc(l)}</span>`).join("")}</div>`:""}</div>
+    <button class="play" onclick="playTrack(${c.n})" aria-label="Écouter">${svg(isPlaying(c)?"pause":"play",12)}</button>${flag("reco2")?`<button class="mi" onclick="dismissSugg('t${c.n}','${jsq(c.t)}')" aria-label="Pas pour ce set" title="Pas pour ce set">${svg("x",14)}<span class="nol">Pas pour ce set</span></button>`:""}<button class="btn sm add" onclick="addSet(${c.n})" aria-label="Ajouter au set">${svg("plus",15)}<span class="addl">Ajouter</span></button></div>`;}
 function discRow({c,s}){const [w,cl]=verdict(s);const inL=inWish(c);const on=PL&&PL.u==="dz"+c.dz;
   return `<div class="sg sgd"><div class="sc"><span class="tag ${cl}">${w}</span></div>${cover(c)}<div class="sgm"><div class="sgt"><b>${esc(c.t)}</b> <span class="hint">· ${esc(c.a)}</span></div><div class="hint sgw">${Math.round(c.bpm)} BPM · ${c.k} · ${c.peu?"pépite peu connue":c.from==="found"?"trouvé en ligne":"en tendance"}</div></div>
     <button class="play ${on?"on":""}" onclick="playDz(${c.dz})" aria-label="Écouter">${svg(on?"pause":"play",12)}</button>${flag("reco2")&&!inL?`<button class="mi" onclick="dismissSugg('dz${c.dz}','${jsq(c.t)}')" aria-label="Pas pour ce set" title="Pas pour ce set">${svg("x",14)}</button>`:""}<button class="btn sm ${inL?"ghost":"violet"}" onclick="addIdea(${c.dz})" ${inL?"disabled":""}>${inL?"✓ Ajouté":"+ Musique"}</button></div>`;}
@@ -960,20 +1016,20 @@ VIEWS.next=()=>{
   if(!S.tracks.length||!visible().length)return welcome();
   if(!T(S.cur)||T(S.cur).hidden){S.cur=visible()[0].n;if(!S.set.ids.length)S.set.ids=[S.cur];}
   const cur=T(S.cur),sg=suggestions(),ds=discoverSugg(),cov=coverage(),rules=ruleEffects(),opts=S.dir!=="any"||S.sameGenre||S.keyF;
-  return `<div class="row between"><div><h1>Préparer un set</h1><p class="sub">Choisis un son : je te dis lesquels enchaîner derrière.</p></div>
-    <div style="position:relative;flex:1;min-width:220px;max-width:340px"><input class="f" id="pickQ" placeholder="Partir d’un autre son…" style="width:100%" oninput="pickDrop()" onfocus="pickDrop()" onkeydown="pickKey(event)" autocomplete="off"><div id="pickD"></div></div></div>
+  return `<div class="row between"><div><h1 class="scrT">Mon set</h1><p class="sub">Choisis un son : je te dis lequel mettre ensuite.</p></div>
+    <div style="position:relative;flex:1;min-width:220px;max-width:340px"><input class="f" id="pickQ" placeholder="Changer de son de départ…" style="width:100%" oninput="pickDrop()" onfocus="pickDrop()" onkeydown="pickKey(event)" autocomplete="off"><div id="pickD"></div></div></div>
   ${tip("next","Appuie sur <b>+</b> pour ajouter un son à ton set. Les propositions se recalculent à partir de lui.")}
-  <div class="card hi now">${cover(cur,"lg")}<div style="flex:1;min-width:0"><span class="tag info">Tu joues</span><div class="big mt2" style="overflow:hidden;text-overflow:ellipsis">${esc(cur.t)}</div><div class="hint">${esc(cur.a)}</div></div>
+  <div class="card hi now">${cover(cur,"lg")}<div style="flex:1;min-width:0"><span class="tag info">TU JOUES</span><div class="big mt2" style="overflow:hidden;text-overflow:ellipsis">${esc(cur.t)}</div><div class="hint">${esc(cur.a)}</div></div>
     <div style="text-align:center"><div class="big">${cur.bpm?Math.round(cur.bpm):"?"}</div><div class="hint">BPM</div></div>${keyTag(cur.k,cur.kSrc==="est")}
     <button class="play" style="width:44px;height:44px" onclick="playTrack(${cur.n})" aria-label="Écouter">${svg(isPlaying(cur)?"pause":"play",16)}</button></div>
   <div class="grid g-next mt"><div>
-    <div class="row between"><h3>Enchaîne avec</h3><button class="chip ${opts?"on":""}" onclick="S.showOpts=!S.showOpts;softRender()">Options${opts?" ●":""}</button></div>
+    <div class="row between"><h3>Quoi mettre après ?</h3><button class="chip ${opts?"on":""}" onclick="S.showOpts=!S.showOpts;softRender()">Filtres${opts?" ●":""}</button></div>
     ${S.showOpts?`<div class="card mt2" style="padding:12px"><div class="row"><span class="hint">Énergie</span><div class="seg">${[["any","Peu importe"],["up","Monter"],["keep","Garder"],["down","Descendre"]].map(([v,l])=>`<button class="${S.dir===v?"on":""}" onclick="S.dir='${v}';save();render()">${l}</button>`).join("")}</div></div>
       <div class="row mt2"><button class="chip ${S.sameGenre?"on":""}" onclick="S.sameGenre=!S.sameGenre;render()">Même genre seulement</button>${S.keyF?`<button class="chip on" onclick="S.keyF=null;render()">Tonalité ${S.keyF} ✕</button>`:""}${rules.map(r=>`<span class="tag learn">Retenu : ${r.sgn>0?"plus":"moins"} ${de(r.l)}</span>`).join("")}</div></div>`:""}
     ${sg.length?sg.map(sugRow).join(""):""}
     ${flag("reco2")&&sg.length<5?`<div class="card mt2" style="padding:12px"><b>${sg.length?"Plus d’autres propositions pertinentes":"Aucune proposition pertinente"}</b><p class="hint mt2">${excludedCount()?`${pl(excludedCount(),"son")} écarté${excludedCount()>1?"s":""} pendant cette session (refusés ou déjà proposés souvent).`:"Ta musique n’a pas d’autre son qui s’enchaîne bien ici."} ${S.dir!=="any"||S.sameGenre||S.keyF?"Tu peux aussi enlever une option.":""}</p>${excludedCount()?`<button class="btn sm ghost mt2" onclick="resetExclusions()">Remettre les sons écartés</button>`:""}</div>`:!sg.length?`<div class="empty">Aucun son ne correspond. Enlève une option.</div>`:""}
     ${flag("reco2")&&sg.length?`<button class="chip mt2" onclick='otherIdeas(${JSON.stringify(sg.map(r=>["t"+r.c.n,r.c.t])).replace(/'/g,"&#39;")})'>↻ Autres propositions</button>`:""}
-    ${ds.length?`<h3 class="mt">À découvrir <span class="hint" style="font-weight:400">· pas encore dans ta musique</span></h3>${ds.map(discRow).join("")}`:""}
+    ${ds.length?`<h3 class="mt">Idées à ajouter <span class="hint" style="font-weight:400">· pas encore dans ta musique</span></h3>${ds.map(discRow).join("")}`:""}
   </div>
   <div class="card"><div class="row between"><h3>Roue des tonalités</h3><span class="tag ${cov.n===24?"ok":"warn"}" data-tip="Tonalités où tu as au moins un son">${cov.n}/24</span></div>${wheel(cur.k,cov)}
     <p class="hint" style="text-align:center">Couleur : compatible avec ton son.${cov.n<24?`<br>Pointillés : tu n’as aucun son. <b style="color:var(--txt)">Touche-les</b> pour en trouver.`:""}</p></div></div>
@@ -1392,16 +1448,16 @@ function addAllBtn(kind,list){const n=list.filter(x=>!libMatch(x)).length;return
 VIEWS.trend=()=>{
   const it=S.trends.items,on=new Set(STYLES.filter(([k])=>S.styles[k]).map(x=>x[1])),dsc=(S.disc.items||[]).filter(x=>on.has(x.style)),tab=S.trTab||"moment";
   const wl=wishes(),ug=upgrades(),listN=wl.length+ug.length;
-  const head=`<h1>Découvrir</h1><p class="sub">Appuie sur <b style="color:var(--txt)">+</b> : le son entre dans ta musique et sert tout de suite pour préparer tes sets.</p>
+  const head=`<h1 class="scrT">Trouver du son</h1><p class="sub">Touche <b style="color:var(--txt)">+</b> pour garder un son dans ta musique.</p>
    <form class="sbar" onsubmit="event.preventDefault();doSearch($('#trQ').value)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-     <input id="trQ" placeholder="Cherche n’importe quel son ou artiste…" value="${esc(S.search.q||"")}" autocomplete="off" enterkeyhint="search">${S.search.q?`<button type="button" class="mi" onclick="doSearch('')" aria-label="Effacer">${svg("x",14)}</button>`:""}<button class="btn sm" type="submit">Chercher</button></form>`;
+     <input id="trQ" placeholder="Cherche un son ou un artiste" value="${esc(S.search.q||"")}" autocomplete="off" enterkeyhint="search">${S.search.q?`<button type="button" class="mi" onclick="doSearch('')" aria-label="Effacer">${svg("x",14)}</button>`:""}<button class="btn sm" type="submit">Chercher</button></form>`;
   if(S.search.q){const r=S.search.items;
     return head+`<div class="row between mt"><h3>Résultats pour « ${esc(S.search.q)} »</h3><button class="chip" onclick="doSearch('')">Revenir aux tendances</button></div>
       <div class="card mt2" style="padding:4px 14px">${S.search.busy?`<div class="empty">Je cherche…</div>`:S.search.err?`<div class="empty">Recherche impossible : ${esc(S.search.err)}</div>`:r.length?r.map(x=>trRow(x,false)).join(""):`<div class="empty">Aucun résultat.</div>`}</div>${addAllBtn("search",r)}`;}
-  const tabs=`<div class="seg mt" style="display:flex;width:100%;max-width:560px">${[["moment","Du moment"],["decouverte","Découverte"],["liste",`À récupérer${listN?" ("+listN+")":""}`]].map(([k,l])=>`<button style="flex:1;text-align:center" class="${tab===k?"on":""}" onclick="S.trTab='${k}';save();openTab('${k}')">${l}</button>`).join("")}</div>`;
+  const tabs=`<div class="seg mt" style="display:flex;width:100%;max-width:560px">${[["moment","Du moment"],["decouverte","Idées pour toi"],["liste",`À télécharger${listN?" ("+listN+")":""}`]].map(([k,l])=>`<button style="flex:1;text-align:center" class="${tab===k?"on":""}" onclick="S.trTab='${k}';save();openTab('${k}')">${l}</button>`).join("")}</div>`;
   let body="";
   if(tab==="moment"){const age=S.trends.date?Math.round((Date.now()-S.trends.date)/36e5):null;
-    body=`<div class="row between mt"><span class="hint">${it.length?`Top France et classements · ${age<1?"à l’instant":age<24?"il y a "+age+" h":"il y a "+Math.round(age/24)+" j"}`:""}</span><button class="chip" onclick="refreshTrends()" ${trBusy?"disabled":""}>${trBusy?"Mise à jour…":"Actualiser"}</button></div>
+    body=`<div class="row between mt"><span class="hint">${it.length?`Top France et classements · ${age<1?"à l’instant":age<24?"il y a "+age+" h":"il y a "+Math.round(age/24)+" j"}`:""}</span><button class="chip" onclick="refreshTrends()" ${trBusy?"disabled":""}>${trBusy?"Mise à jour…":"Rafraîchir"}</button></div>
       <div class="card mt2" style="padding:4px 14px">${it.length?it.map(x=>trRow(x,true)).join(""):`<div class="empty">${trBusy?"Je récupère les classements…":`<button class="btn" onclick="refreshTrends()">Voir les sons du moment</button>`}</div>`}</div>${addAllBtn("moment",it)}`;}
   if(tab==="decouverte"){
     body=`<p class="hint mt">Des sons <b style="color:var(--txt)">peu connus</b> de tes styles, tirés au hasard. Chaque son ajouté est remplacé par un nouveau.</p>
@@ -1415,7 +1471,7 @@ VIEWS.trend=()=>{
     body=`<p class="hint mt">Ces sons sont déjà dans ta musique : tu peux préparer tes sets avec. Il te reste à récupérer les fichiers. ${H.dl&&PERM.dl==="granted"?"Dès qu’un fichier arrive dans Téléchargements, je le relie tout seul.":"Connecte ton dossier Téléchargements (Réglages) : je relierai les fichiers dès qu’ils arrivent."}</p>
       ${grp("Demandés en soirée","entendus dans tes débriefs",wl.filter(t=>t.src==="soiree"))}${grp("Ajoutés","tendances, pépites et recherches",wl.filter(t=>t.src!=="soiree"))}${grp("À remplacer","meilleure qualité",ug)}
       ${listN?"":`<div class="card mt"><div class="empty">Rien à récupérer. Appuie sur <b>+</b> à côté d’un son pour l’ajouter à ta musique.</div></div>`}`;}
-  return head+tabs+tip("trend2","Le <b>+</b> met le son dans ta musique. « Va bien après » te dit avec quel son l’enchaîner.")+body+`<p class="hint mt">Source : Deezer. TikTok n’a pas d’accès officiel, Spotify est fermé aux nouvelles applis.</p>`;
+  return head+tabs+tip("trend2","Le <b>+</b> met le son dans ta musique. « Va bien après » te dit avec quel son l’enchaîner.")+body+`<p class="hint mt">Source : Deezer.</p>`;
 };
 function openTab(k){if(k==="decouverte"&&!(S.disc.items||[]).length&&!discBusy)loadDiscovery();else if(k==="moment"&&!S.trends.items.length&&!trBusy)refreshTrends();else softRender();}
 /* ===================== SURVEILLANCE DES TÉLÉCHARGEMENTS =====================
@@ -1458,9 +1514,9 @@ async function showArrival(){const a=arrivals.shift();if(!a)return;const {f,tg,w
 /* ===================== DÉBRIEF VOCAL ===================== */
 let REC=null,recOn=false,recT=null,recS=0,finalTxt="";
 VIEWS.debrief=()=>{const opts=pastGigs().filter(g=>g.type!=="Live / contenu");
-  if(!opts.length)return `<h1>Débrief vocal</h1><p class="sub">Raconte ta soirée, je retiens ce qui marche.</p><div class="card"><div class="empty">${svg("gigs",40)}<div>Ajoute d’abord une soirée passée (Soirées › Nouvelle soirée, ou importe un historique Serato).</div><button class="btn mt" onclick="go('gigs')">Aller aux soirées</button></div></div>`;
+  if(!opts.length)return `<h1 class="scrT">Raconte ta soirée</h1><p class="sub">Raconte ta soirée, je retiens ce qui marche.</p><div class="card"><div class="empty">${svg("gigs",40)}<div>Aucune soirée passée pour l’instant. Ajoute-en une dans Mes soirées.</div><button class="cta mt" onclick="go('gigs')">Aller à Mes soirées</button></div></div>`;
   if(!opts.some(g=>g.id===S.dGig))S.dGig=(pendingDeb()[0]||opts[0]).id;const g=S.gigs.find(x=>x.id===S.dGig);const SR=srOK();
-  return `<h1>Débrief vocal</h1><p class="sub">Appuie, raconte ta soirée comme à une copine, puis analyse. Je relie ce que tu dis aux sons joués, tu valides chaque point.</p>
+  return `<h1 class="scrT">Raconte ta soirée</h1><p class="sub">Appuie sur le micro et parle comme à un ami : qu’est-ce qui a marché, qu’est-ce qui a raté ? Ensuite je relie ça aux sons joués.</p>
   <div class="grid g2"><div class="card" style="text-align:center">
     <select class="f" onchange="S.dGig=+this.value;S.dPts=null;render()" style="width:100%">${opts.map(o=>`<option value="${o.id}" ${o.id===S.dGig?"selected":""}>${fmtDate(o.date)} · ${esc(o.lieu)}${o.deb?" (déjà fait)":""}</option>`).join("")}</select>
     <p class="hint mt2">${g.played.length?pl(g.played.length,"son")+" joué"+(g.played.length>1?"s":"")+" ce soir-là":"Pas de liste de sons : je chercherai dans toute ta bibliothèque."}</p>
@@ -1468,7 +1524,7 @@ VIEWS.debrief=()=>{const opts=pastGigs().filter(g=>g.type!=="Live / contenu");
     <button class="mic ${recOn?"rec":""}" onclick="micToggle()" aria-label="Enregistrer">${recOn?'<svg viewBox="0 0 24 24" fill="#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>'}</button>
     <p id="micTxt" style="font-weight:600">${recOn?"Je t’écoute… appuie pour terminer":SR?"Appuie pour parler":(isIOS&&installed()?"Micro de l’appli indisponible sur iPhone : touche la zone de texte et dicte avec le micro du clavier":"Micro non disponible dans ce navigateur : écris ton débrief")}</p>
     <textarea class="f mt" id="dTxt" placeholder="Ta transcription apparaît ici. Tu peux aussi écrire ou corriger." oninput="S.dTxt=this.value;updAn()">${esc(S.dTxt||"")}</textarea>
-    <div class="row mt2" style="justify-content:flex-end"><button class="btn" id="anB" onclick="runAnalyse()" ${(S.dTxt||"").trim().length>8?"":"disabled"}>Analyser</button></div>
+    <div class="row mt2" style="justify-content:flex-end"><button class="btn" id="anB" onclick="runAnalyse()" ${(S.dTxt||"").trim().length>8?"":"disabled"}>Analyser ma soirée</button></div>
     <p class="hint mt">La reconnaissance vocale passe par le service de ton navigateur. Le texte est analysé ici, sur ton ordinateur.</p></div>
   <div class="card"><div class="row between"><h3>Voici ce que j’ai compris</h3>${S.dPts?`<span class="hint">${pl(S.dPts.length,"point")}</span>`:""}</div><div id="pts">${ptsHtml()}</div>
     ${S.dPts&&S.dPts.length?`<button class="btn green block mt" onclick="applyDebrief()">${svg("check",15)}Appliquer les points cochés</button><p class="hint mt2" style="text-align:center">Tu pourras tout annuler.</p>`:""}</div></div>`;};
@@ -1524,17 +1580,17 @@ function applyDebrief(){const g=S.gigs.find(x=>x.id===S.dGig);const snap=JSON.st
 /* ===================== RÉGLAGES ===================== */
 VIEWS.settings=()=>{const st=k=>H[k]?(PERM[k]==="granted"?'<span class="tag ok">Connecté</span>':'<span class="tag warn">À reconnecter</span>'):'<span class="tag">Non connecté</span>';
   const conn=(k,ic,col,title,desc,btn)=>`<div class="conn"><div class="ic" style="background:${col}22;color:${col}">${svg(ic,18)}</div><div style="flex:1;min-width:0"><b>${title}</b> ${st(k)}<div class="hint">${desc}${H[k]?` · dossier « ${esc(H[k].name)} »`:""}</div></div><button class="btn sm ${H[k]?"ghost":""}" onclick="pickDir('${k}')" ${FSA?"":"disabled"}>${H[k]?"Changer":btn}</button></div>`;
-  return `<h1>Réglages</h1><p class="sub">Tout reste sur ton ordinateur. Seules les recherches de tendances passent par internet (Deezer).</p>
-  <div class="grid g2"><div class="card"><h3>Tes dossiers</h3>
-    ${conn("serato","lib","#2fa4ff","Serato","Musique › _Serato_ · lire ta bibliothèque, écrire les crates","Connecter")}
-    ${conn("music","folder","#3ddc84","Musique","Le dossier qui contient tes sons · écoute, analyse, copie sur clé","Connecter")}
-    ${conn("dl","dl","#ff8a1f","Téléchargements","Repérer les nouveaux sons récupérés","Connecter")}
+  return `<h1 class="scrT">Réglages</h1><p class="sub">Tes sons restent sur ton appareil. Seules les recherches en ligne passent par Deezer.</p>
+  <div class="grid g2"><div class="card"><h3>Brancher ma musique</h3>
+    ${conn("serato","lib","#2fa4ff","Serato","Pour que SetMate lise ta bibliothèque Serato et y range tes playlists","Choisir le dossier")}
+    ${conn("music","folder","#3ddc84","Musique","Le dossier où sont tes sons : pour les écouter et les copier sur une clé USB","Choisir le dossier")}
+    ${conn("dl","dl","#ff8a1f","Téléchargements","Pour repérer les sons que tu viens de télécharger","Choisir le dossier")}
     ${H.serato&&PERM.serato==="granted"?`<button class="btn ghost sm mt" onclick="loadSerato(true).then(render)">${svg("refresh",13)}Relire ma base Serato</button>`:""}
     ${S.musicPrefix?`<p class="hint mt2">Sons retrouvés sous <code>/${esc(S.musicPrefix)}</code></p>`:""}
     ${H.serato?`<div class="row mt2"><span class="hint">Ta version de Serato</span><select class="f" onchange="S.seratoVer=this.value||null;save();render()"><option value="">À préciser</option>${["3","4","5","?"].map(v=>`<option value="${v}" ${S.seratoVer===v?"selected":""}>${v==="?"?"Je ne sais pas":SV_LABEL[v]}</option>`).join("")}</select></div>
     <p class="hint mt2">${S.seratoVer==="3"?"Crates SetMate et clé USB au format Serato 3.":S.seratoVer==="5"?"Serato 5.0 : j’écris les crates dans SetMate (Serato fermé), elles apparaissent quand tu relances Serato (testé sur Windows). Clé USB : non testé, je copie seulement les fichiers.":S.seratoVer?"Serato 4 : je n’écris aucune crate (non testé). Je te propose un dossier à glisser dans Serato, ou une playlist M3U8.":"Indique ta version avant d’envoyer des crates."}${S.seratoDbAge>30?` <span style="color:var(--orange)">Ta base Serato 3 n’a pas changé depuis ${S.seratoDbAge} jours.</span>`:""}</p>`:""}
     ${!FSA?`<p class="hint mt">Pour connecter des dossiers, ouvre SetMate dans Chrome ou Edge. <button class="btn sm ghost" onclick="importDbFile()">Importer « database V2 »</button></p>`:""}</div>
-  <div class="card"><h3>Veille des tendances</h3><p class="hint mt2">Récap automatique chaque jeudi (à l’ouverture de SetMate).</p>
+  <div class="card"><h3>Mes styles</h3><p class="hint mt2">Chaque jeudi, je te prépare les nouveautés de ces styles.</p>
     <div class="row mt2">${[["rap","Rap / Hip-hop"],["afro","Afro"],["amapiano","Amapiano"],["rnb","R&B"],["pop","Pop"]].map(([k,l])=>`<button class="chip ${S.genres[k]?"on":""}" onclick="S.genres.${k}=S.genres.${k}?0:1;save();render()">${l}</button>`).join("")}</div>
     <p class="hint mt2">Le Top France est toujours inclus.</p></div>
   <div class="card"><h3>Sécurité</h3>
@@ -1798,9 +1854,9 @@ function plDetail(p){const busy=plBusy&&plBusy.id===p.id,dzN=p.items.filter(x=>x
     ${dzN<p.items.length&&!busy&&p.items.some(x=>x.miss)?`<p class="hint mt2">Les sons « introuvables » n’ont pas d’équivalent clair sur Deezer : vérifie l’orthographe ou ajoute le fichier sur ce téléphone.</p>`:""}`;}
 function qLabel(it){if(it.n){const t=T(it.n);return t?{t:t.t,a:t.a,cover:t.cover}:it;}if(it.fid){const o=S.own.find(x=>x.fid===it.fid);return o||it;}return it;}
 VIEWS.listen=()=>{const tab=S.lsTab||"pls",p=S.plOpen&&plGet(S.plOpen);
-  const inst=isIOS&&!installed()?tip("install",`installe SetMate comme une appli : dans Safari, touche <b style="color:var(--txt)">Partager</b>, puis <b style="color:var(--txt)">Sur l’écran d’accueil</b>.`):"";
+  const inst=isIOS&&!installed()?tip("install",`Installe SetMate comme une appli : dans Safari, touche <b style="color:var(--txt)">Partager</b>, puis <b style="color:var(--txt)">Sur l’écran d’accueil</b>.`):"";
   if(tab==="pls"&&p)return inst+plDetail(p);
-  const head=`<h1>Écouter</h1><p class="sub">Tes playlists, tes fichiers sur ce téléphone, et des radios pour découvrir. Sons du catalogue : extraits de 30 s. Tes fichiers : en entier, même sans réseau.</p>${inst}
+  const head=`<h1 class="scrT">Mes playlists</h1><p class="sub">Tes playlists, tes fichiers et des radios. Les sons du catalogue sont des extraits de 30 secondes.</p>${inst}
     <div class="seg mt" style="display:flex;width:100%;max-width:560px">${[["pls","Playlists"],["own","Sur ce téléphone"],["q",`File d’écoute${Q.items.length?" ("+Q.items.length+")":""}`]].map(([k,l])=>`<button style="flex:1;text-align:center" class="${tab===k?"on":""}" onclick="S.lsTab='${k}';save();softRender()">${l}</button>`).join("")}</div>`;
   if(tab==="own"){const own=S.own||[];
     return head+`<div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="addOwnFiles()">${svg("plus",15)}Ajouter des fichiers audio</button>${own.length?`<button class="btn ghost" onclick="ownPlay(0)">${svg("play",13)}Tout écouter</button><button class="btn ghost" onclick="ownPlay(0,true)">${svg("shuf",14)}Aléatoire</button>`:""}</div>
@@ -2289,7 +2345,7 @@ function selToPl(){const it=selItems();if(!it.length)return toast("Coche d’abo
 function selAdd(){const it=selItems();if(!it.length)return toast("Coche d’abord des sons.");const added=[];for(const x of it){const {t,isNew}=addToLib(x,S.trTab==="decouverte"?"decouverte":"tendance");if(isNew)added.push(t);}
   const add=addToDefPl(added);pushUndo(`ajout de ${added.length} sons`,()=>{added.forEach(removeFromLib);const p=defPl(false);if(p)p.items=p.items.filter(y=>!add.includes(y));save(true);});
   save(true);toast(added.length?`${pl(added.length,"son")} ajouté${added.length>1?"s":""} à ta musique et à « Mes pépites ».`:"Tout est déjà dans ta musique.",!!added.length);SELD.clear();liveRefresh();}
-function selBar(){if(!SELT)return `<div class="row mt2"><button class="chip" onclick="selMode(true)">☑ Sélectionner plusieurs</button></div>`;
+function selBar(){if(!SELT)return `<div class="row mt2"><button class="chip" onclick="selMode(true)">☑ Choisir plusieurs</button></div>`;
   return `<div class="recbar"><div class="row" style="gap:8px;flex-wrap:wrap"><span class="hint" style="align-self:center">${SELD.size} coché${SELD.size>1?"s":""}</span><button class="chip" onclick="selAll()">Tout cocher</button><button class="btn sm" onclick="selAdd()">${svg("plus",14)}Ma musique + Mes pépites</button><button class="btn ghost sm" onclick="selToPl()">${svg("plplus",14)}Autre playlist</button><button class="chip on" onclick="selMode(false)">Terminé</button></div></div>`;}
 
 /* ---------- Branchements des vues ---------- */
@@ -2547,6 +2603,37 @@ function soirDraw(){let el=$("#soir");
       ${reqs.map(t=>`<span class="hint">✓ ${esc(t.a?t.a+" - ":"")}${esc(t.t)}</span>`).join("")}<span class="hint">Pour dicter : touche le micro du clavier de ton iPhone.</span></div>
     <div class="sfoot">${soirAsk?`<span>Terminer la soirée ?</span><span style="display:flex;gap:8px"><button class="sm2 ghost" onclick="soirAsk=false;soirDraw()">Non</button><button class="sm2 red" id="soirEndB" onclick="soirEnd()">Oui, terminer</button></span>`:`<span class="hint">Tout est enregistré tout seul.</span><button class="sm2 ghost" id="soirAskB" onclick="soirAsk=true;soirDraw()">Terminer</button>`}</div>`;
   soirTick();}
+
+/* ===================== 1.12 REFONTE INTUITIVE : écrans réécrits (reprennent la logique existante, changent seulement ce qu'on voit) ===================== */
+VIEWS.home=()=>{
+  if(!S.tracks.length)return welcome();
+  const up=upGigs()[0],pd=pendingDeb(),vq=valQueue().length,h=new Date().getHours(),wl=wishes().length,a=qList().length+tList().length;
+  let carte;
+  if(up){const c=gigCheck(up),done=c.filter(x=>x[0]).length,dd=daysUntil(up.date),mine=S.set.gig===up.id,pret=mine&&S.set.ids.length>1,usb=!!(up.check&&up.check.usb);
+    const bouton=!pret?"Préparer mon set":!usb?"Copier sur ma clé USB":"Voir mon set";
+    carte=`<div class="card2"><span class="tag info">${dd===0?"CE SOIR":dd===1?"DEMAIN":"DANS "+dd+" JOURS"}</span><h2 class="c2t">${esc(up.theme&&up.theme!=="Prochaine soirée"?up.theme:up.lieu||up.type)}</h2><div class="hint">${fmtDate(up.date)} · ${esc(up.lieu)}</div>
+      <div class="prog" aria-label="Préparation ${done} sur ${c.length}"><i style="width:${Math.round(done/c.length*100)}%"></i></div><div class="hint" style="margin-bottom:14px">Préparation ${done} sur ${c.length}</div>
+      <button class="cta" onclick="linkSet(${up.id})">${bouton}</button></div>`;}
+  else carte=`<div class="card2"><h2 class="c2t">Ajoute ta première soirée</h2><p class="hint" style="margin:0 0 14px">Donne une date et un lieu : je te guide pour préparer ton set.</p><button class="cta" onclick="go('gigs');newGig()">Nouvelle soirée</button></div>`;
+  const tuile=(ic,t,s,on)=>`<button class="tile2" onclick="${on}"><span class="ti2">${svg(ic,24)}</span><b>${t}</b><span>${s}</span></button>`;
+  const ligne=(t,on,cl)=>`<button class="lrow ${cl||""}" onclick="${on}"><span>${t}</span><span>›</span></button>`;
+  return `<div class="hero"><div><h1>${h>=18||h<5?"Bonsoir":"Salut"}${S.name?", "+esc(S.name):""}</h1><p class="sub" style="margin:4px 0 0">Voilà ce qui t’attend.</p></div></div>
+  ${carte}
+  <div class="tiles2">${tuile("trend","Trouver du son","Les sons du moment","go('trend')")}${pd.length?tuile("debrief","Raconter ma soirée",`Soirée du ${fmtDate(pd[0].date)}`,`S.dGig=${pd[0].id};go('debrief')`):tuile("lib","Ma musique",pl(visible().length,"son"),"go('lib')")}</div>
+  ${vq?ligne(`${pl(vq,"son")} à contrôler`,"S.libView='check';go('lib')","or"):""}
+  ${a||wl?ligne(`${pl(a||wl,"son")} à récupérer`,"S.trTab='liste';go('trend')"):""}
+  ${S.demo?`<div class="card2" style="margin-top:14px"><b>Tu fais un essai.</b><p class="hint" style="margin:4px 0 12px">Ces sons sont des exemples. Rien n’est écrit dans Serato.</p><button class="cta sec" onclick="leaveDemo()">${MOBILE&&!FSA?"Quitter l’essai":"Ajouter ma musique"}</button></div>`:""}`;};
+
+VIEWS.gigs=()=>{const up=upGigs(),past=pastGigs();
+  const statut=g=>{const pret=S.set.gig===g.id&&S.set.ids.length>1;return !pret?"Set à préparer":(g.check&&g.check.usb)?"Set prêt, copié sur la clé":"Clé USB à faire";};
+  const nom=g=>esc(g.theme&&g.theme!=="Prochaine soirée"?g.theme:(g.lieu||g.type));
+  return `<button class="cta" onclick="newGig()">${svg("plus",18)}Nouvelle soirée</button>
+  <h3 class="sect">À venir</h3>${up.length?up.map(g=>{const dd=daysUntil(g.date);
+    return `<div class="gcard" role="button" tabindex="0" onclick="linkSet(${g.id})"><div class="row between" style="flex-wrap:nowrap"><span class="tag info">${dd===0?"CE SOIR":dd===1?"DEMAIN":"DANS "+dd+" JOURS"}</span><button class="lnk2 sm" onclick="event.stopPropagation();editGig(${g.id})">Modifier</button></div>
+      <b class="gct">${nom(g)}</b><div class="hint">${fmtDate(g.date)} · ${esc(g.lieu)}${g.time?" · "+esc(g.time):""}</div><div class="gst">${statut(g)} ›</div></div>`;}).join(""):`<div class="empty">Aucune soirée prévue. Ajoutes-en une.</div>`}
+  <h3 class="sect">Passées</h3>${past.length?past.map(g=>`<div class="gcard slim" role="button" tabindex="0" onclick="gigDetail(${g.id})"><div style="min-width:0"><b>${fmtDate(g.date)}</b><div class="hint">${esc(g.lieu)} · ${pl(g.played.length,"son")}</div></div>
+      ${g.deb?`<span class="tag ok">Bilan fait</span>`:g.type==="Live / contenu"?"":`<button class="pillo" onclick="event.stopPropagation();S.dGig=${g.id};go('debrief')">Raconte ta soirée</button>`}</div>`).join(""):`<div class="empty">Aucune soirée passée.</div>`}
+  <button class="lnk2" onclick="importHistory()">Importer mon historique Serato</button>`;};
 
 /* ===================== DÉMARRAGE ===================== */
 (async()=>{await load();await loadLog();migrateStages();
